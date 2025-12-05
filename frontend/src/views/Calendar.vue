@@ -70,6 +70,16 @@
           <p class="text-blue-800 dark:text-blue-200 font-medium">{{ selectedEvent.worship_plan_title }}</p>
         </div>
 
+        <!-- Begin Family Worship Button -->
+        <div v-if="selectedEvent?.event_type === 'worship' && selectedEvent?.worship_plan_id && !selectedEvent?.is_completed && !selectedEvent?.has_completed_log && (authStore.isParent || authStore.user?.role === 'parent')" class="mb-4">
+          <router-link
+            :to="`/worship/session?event_id=${selectedEvent.id}&plan_id=${selectedEvent.worship_plan_id}`"
+            class="block w-full btn btn-primary text-center text-lg py-3"
+          >
+            🎵 Begin Family Worship
+          </router-link>
+        </div>
+
         <!-- Event Info -->
         <div class="mb-4 space-y-2">
           <div v-if="selectedEvent?.start_date">

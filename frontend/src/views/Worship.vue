@@ -42,7 +42,15 @@
           <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Bible Reading:</span>
           <span class="text-sm text-gray-600 dark:text-gray-400 ml-2">{{ plan.bible_reading }}</span>
         </div>
-        <div class="flex space-x-2 mt-4">
+        <div class="flex flex-wrap gap-2 mt-4">
+          <router-link
+            v-if="plan.event_id && !plan.is_completed && !plan.event_completed"
+            :to="`/worship/session?event_id=${plan.event_id}&plan_id=${plan.id}`"
+            class="btn btn-primary text-sm"
+            @click.stop
+          >
+            🎵 Begin Family Worship
+          </router-link>
           <button
             @click.stop="editPlan(plan)"
             class="text-sm text-primary-600 dark:text-primary-400 hover:underline"

@@ -64,6 +64,12 @@ const routes = [
         path: 'notifications',
         name: 'Notifications',
         component: () => import('@/views/Notifications.vue')
+      },
+      {
+        path: 'worship/session',
+        name: 'FamilyWorshipSession',
+        component: () => import('@/views/FamilyWorshipSession.vue'),
+        meta: { requiresParent: true }
       }
     ]
   }

@@ -243,13 +243,14 @@ const loadEvents = async () => {
       const hasPlan = event.worship_plan_id;
       
       return {
-        id: event.id,
+        id: String(event.id), // FullCalendar expects string IDs
         title: event.title + (hasPlan ? ' 📋' : '') + (isCompleted ? ' ✓' : ''),
         start: event.start_date,
         end: event.end_date || null,
         backgroundColor: isCompleted ? '#10b981' : getEventColor(event.event_type),
         borderColor: isCompleted ? '#10b981' : getEventColor(event.event_type),
         extendedProps: {
+          originalId: event.id, // Store original numeric ID for lookup
           event_type: event.event_type,
           description: event.description,
           is_recurring: event.is_recurring === 1,
@@ -287,9 +288,23 @@ function handleDateSelect(selectInfo) {
 }
 
 async function handleEventClick(clickInfo) {
-  const event = events.value.find(e => e.id === clickInfo.event.id);
+  // Prevent default behavior
+  clickInfo.jsEvent.preventDefault();
+  clickInfo.jsEvent.stopPropagation();
   
-  if (!event) return;
+  // Get the original numeric ID from extendedProps or parse the string ID
+  const eventId = clickInfo.event.extendedProps?.originalId || parseInt(clickInfo.event.id);
+  const event = events.value.find(e => e.id === eventId);
+  
+  if (!event) {
+    console.error('Event not found:', {
+      clickedId: clickInfo.event.id,
+      parsedId: eventId,
+      availableIds: events.value.map(e => e.id)
+    });
+    alert('Event not found. Please refresh the page.');
+    return;
+  }
   
   // If it's a worship event, show the details modal for plan assignment/completion
   if (event.event_type === 'worship') {

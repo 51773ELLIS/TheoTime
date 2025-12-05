@@ -122,7 +122,7 @@
           <div class="ml-18 mt-4 space-y-4">
             <div class="p-4 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-lg border-l-4 border-blue-500 animate-fade-in">
               <p class="text-lg font-semibold text-gray-900 dark:text-white">
-                {{ plan.bible_reading }}
+                {{ typeof plan.bible_reading === 'string' ? plan.bible_reading : (plan.bible_reading?.text || plan.bible_reading?.title || String(plan.bible_reading || '')) }}
               </p>
             </div>
             <div class="animate-fade-in" style="animation-delay: 0.2s">

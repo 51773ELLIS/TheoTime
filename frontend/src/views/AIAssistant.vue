@@ -41,7 +41,9 @@
         <h3 class="text-lg font-semibold mb-3">{{ generatedPlan.title || 'Generated Worship Plan' }}</h3>
         <div v-if="generatedPlan.bible_reading" class="mb-3">
           <p class="font-medium text-gray-700 dark:text-gray-300">Bible Reading:</p>
-          <p class="text-gray-600 dark:text-gray-400">{{ generatedPlan.bible_reading }}</p>
+          <p class="text-gray-600 dark:text-gray-400">
+            {{ typeof generatedPlan.bible_reading === 'string' ? generatedPlan.bible_reading : (generatedPlan.bible_reading?.text || generatedPlan.bible_reading?.title || String(generatedPlan.bible_reading)) }}
+          </p>
         </div>
         <div v-if="generatedPlan.discussion_questions" class="mb-3">
           <p class="font-medium text-gray-700 dark:text-gray-300">Discussion Questions:</p>
@@ -224,9 +226,21 @@ const saveGeneratedPlan = async () => {
       });
     }
 
+    // Ensure bible_reading is a string
+    let bibleReading = '';
+    if (generatedPlan.value.bible_reading) {
+      if (typeof generatedPlan.value.bible_reading === 'string') {
+        bibleReading = generatedPlan.value.bible_reading;
+      } else if (typeof generatedPlan.value.bible_reading === 'object') {
+        bibleReading = generatedPlan.value.bible_reading.text || generatedPlan.value.bible_reading.title || JSON.stringify(generatedPlan.value.bible_reading);
+      } else {
+        bibleReading = String(generatedPlan.value.bible_reading);
+      }
+    }
+
     const planData = {
       title: generatedPlan.value.title || 'AI Generated Plan',
-      bible_reading: generatedPlan.value.bible_reading || '',
+      bible_reading: bibleReading,
       video_links: videoLinks,
       song_links: songLinks,
       activities: activities,

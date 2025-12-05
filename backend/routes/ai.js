@@ -34,7 +34,12 @@ const extractTitle = (text) => {
 
 const extractBibleReading = (text) => {
   const bibleMatch = text.match(/(?:bible reading|Bible Reading|bible_reading)[:\-]\s*(.+?)(?:\n|$)/i);
-  return bibleMatch ? bibleMatch[1].trim() : null;
+  const result = bibleMatch ? bibleMatch[1].trim() : null;
+  // Ensure it's a string, not an object
+  if (result && typeof result === 'object') {
+    return JSON.stringify(result);
+  }
+  return result;
 };
 
 const extractDiscussionQuestions = (text) => {
@@ -71,33 +76,52 @@ const normalizeJWOrgURL = (url) => {
   url = url.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '$2'); // Remove markdown links
   url = url.trim();
   
-  // If it's already a full URL, return it
+  // Remove trailing punctuation that might have been included
+  url = url.replace(/[.,;:!?]+$/, '');
+  
+  // If it's already a full URL, validate and return it
   if (url.startsWith('http://') || url.startsWith('https://')) {
     // Ensure it's a JW.org domain
     if (url.includes('jw.org') || url.includes('wol.jw.org')) {
-      return url;
+      // Validate it's a proper JW.org URL format
+      // Accept: www.jw.org, jw.org, wol.jw.org
+      const jwDomainMatch = url.match(/https?:\/\/(?:www\.)?(jw\.org|wol\.jw\.org)/i);
+      if (jwDomainMatch) {
+        // Normalize to https://www.jw.org or https://wol.jw.org
+        const domain = jwDomainMatch[1].toLowerCase();
+        const path = url.substring(url.indexOf(jwDomainMatch[1]) + jwDomainMatch[1].length);
+        return `https://${domain}${path}`;
+      }
+      return url; // Return as-is if it contains jw.org
     }
     return null; // Not a JW.org URL
   }
   
   // If it contains jw.org but doesn't start with http, add https://
   if (url.includes('jw.org') || url.includes('wol.jw.org')) {
-    // Extract the path
+    // Extract the domain and path
     const jwMatch = url.match(/(?:www\.)?(jw\.org|wol\.jw\.org)(\/.*)?/i);
     if (jwMatch) {
       const domain = jwMatch[1].toLowerCase();
       const path = jwMatch[2] || '';
-      return `https://www.${domain}${path}`;
+      // Ensure path starts with /
+      const normalizedPath = path.startsWith('/') ? path : '/' + path;
+      return `https://${domain}${normalizedPath}`;
     }
   }
   
   // Try to extract URL from text
-  const urlMatch = url.match(/(https?:\/\/[^\s]+)/);
+  const urlMatch = url.match(/(https?:\/\/[^\s<>"']+)/);
   if (urlMatch) {
     const foundUrl = urlMatch[1];
     if (foundUrl.includes('jw.org') || foundUrl.includes('wol.jw.org')) {
-      return foundUrl;
+      return normalizeJWOrgURL(foundUrl); // Recursively normalize
     }
+  }
+  
+  // If it looks like a path (starts with /), assume it's a JW.org path
+  if (url.startsWith('/')) {
+    return `https://www.jw.org${url}`;
   }
   
   return null;
@@ -162,27 +186,49 @@ ${theme ? `- Focused on the theme: ${theme}` : ''}
 ${interests ? `- Incorporating interests: ${interests}` : ''}
 
 Provide a structured plan with:
-1. Bible reading (suggest specific chapters/verses)
-2. Discussion questions
-3. Activity suggestions (drawing, role-play, etc.)
-4. JW.org video or song recommendations
+1. Bible reading (suggest specific chapters/verses that relate to ${theme ? `the theme "${theme}"` : 'spiritual growth'})
+2. Discussion questions (related to ${theme ? `the theme "${theme}"` : 'the Bible reading'})
+3. Activity suggestions (drawing, role-play, etc. related to ${theme ? `the theme "${theme}"` : 'the lesson'})
+4. JW.org video and song recommendations
 
-IMPORTANT: For video_suggestions and song_suggestions, you MUST provide FULL URLs starting with https://www.jw.org/ or https://wol.jw.org/
-Examples:
-- https://www.jw.org/en/library/videos/#en/mediaitems/VODChildren/pub-jwb-XXX_1_VIDEO
-- https://www.jw.org/en/library/music-songs/#en/mediaitems/VODMusic/pub-jwb-XXX_1_AUDIO
-- https://wol.jw.org/en/wol/d/r1/lp-e/XXX
+CRITICAL REQUIREMENTS for video_suggestions and song_suggestions:
+- You MUST select videos and songs that DIRECTLY relate to ${theme ? `the theme "${theme}"` : 'the Bible reading and spiritual lesson'}
+- For videos: Choose from JW.org video library (https://www.jw.org/en/library/videos/)
+  * Format: https://www.jw.org/en/library/videos/{category}/{video-title}/
+  * Examples: 
+    - https://www.jw.org/en/library/videos/bible-treasures/why-does-god-allow-suffering/
+    - https://www.jw.org/en/library/videos/children/be-kind-to-others/
+    - https://www.jw.org/en/library/videos/jw-broadcasting/monthly-program/
+- For songs: Choose from JW.org music library (https://www.jw.org/en/library/music-songs/)
+  * Format: https://www.jw.org/en/library/music-songs/{song-title}/
+  * Or use the search/browse format: https://www.jw.org/en/library/music-songs/#en/mediaitems/VODMusic/pub-jwb-XXX_1_AUDIO
+- ALL URLs must be complete, working links to actual JW.org content
+- Select media that matches the age group (${age ? `${age} years old` : 'children'}) and theme (${theme ? `"${theme}"` : 'spiritual growth'})
+- Do NOT make up URLs - only suggest real, existing JW.org content
+- If you cannot find specific URLs, you may suggest browsing categories like:
+  * Videos: https://www.jw.org/en/library/videos/bible-treasures/ (for Bible lessons)
+  * Videos: https://www.jw.org/en/library/videos/children/ (for children's content)
+  * Songs: https://www.jw.org/en/library/music-songs/ (for Kingdom songs)
 
-Do NOT provide partial URLs or just descriptions. Only include actual working JW.org URLs.
-
-Format your response as JSON with: title, bible_reading, discussion_questions (array), activities (array), video_suggestions (array of full URLs), song_suggestions (array of full URLs), notes.`;
+Format your response as JSON with: title, bible_reading, discussion_questions (array), activities (array), video_suggestions (array of full URLs related to the theme), song_suggestions (array of full URLs related to the theme), notes.`;
 
     const completion = await openai.chat.completions.create({
       model: (await dbGet("SELECT value FROM settings WHERE key = 'openai_model'")).value || 'gpt-3.5-turbo',
       messages: [
         {
           role: 'system',
-          content: 'You are a helpful assistant for Jehovah\'s Witness families. Only suggest content from jw.org or wol.jw.org. When providing video or song links, you MUST provide complete URLs starting with https://www.jw.org/ or https://wol.jw.org/. Never provide partial URLs or just descriptions. Keep suggestions Bible-based and appropriate for family worship.'
+          content: `You are a helpful assistant for Jehovah's Witness families planning Family Worship nights. 
+
+CRITICAL RULES:
+1. Only suggest content from jw.org or wol.jw.org
+2. When providing video or song links, you MUST provide complete, working URLs
+3. Videos must be from: https://www.jw.org/en/library/videos/ (format: /videos/{category}/{video-title}/)
+4. Songs must be from: https://www.jw.org/en/library/music-songs/ (format: /music-songs/{song-title}/ or media item URLs)
+5. ALL media suggestions MUST directly relate to the theme and age group provided
+6. Never make up URLs - only suggest real, existing JW.org content
+7. If you cannot find specific URLs, suggest the appropriate category page for the family to browse
+8. Keep all suggestions Bible-based, age-appropriate, and spiritually uplifting
+9. Ensure videos and songs match the worship plan theme and Bible reading topic`
         },
         {
           role: 'user',
@@ -190,7 +236,7 @@ Format your response as JSON with: title, bible_reading, discussion_questions (a
         }
       ],
       temperature: 0.7,
-      max_tokens: 1000
+      max_tokens: 1500
     });
 
     const responseText = completion.choices[0].message.content.trim();
@@ -221,6 +267,16 @@ Format your response as JSON with: title, bible_reading, discussion_questions (a
       };
     }
     
+    // Ensure bible_reading is always a string
+    if (plan.bible_reading) {
+      if (typeof plan.bible_reading === 'object') {
+        // If it's an object, try to extract text or stringify it
+        plan.bible_reading = plan.bible_reading.text || plan.bible_reading.title || JSON.stringify(plan.bible_reading);
+      } else if (typeof plan.bible_reading !== 'string') {
+        plan.bible_reading = String(plan.bible_reading);
+      }
+    }
+    
     // Ensure arrays are arrays
     if (plan.discussion_questions && !Array.isArray(plan.discussion_questions)) {
       plan.discussion_questions = [plan.discussion_questions];
@@ -238,13 +294,33 @@ Format your response as JSON with: title, bible_reading, discussion_questions (a
     // Normalize all video and song URLs to ensure they're full JW.org URLs
     if (plan.video_suggestions) {
       plan.video_suggestions = plan.video_suggestions
-        .map(url => normalizeJWOrgURL(url))
+        .map(url => {
+          const normalized = normalizeJWOrgURL(url);
+          // Validate it's a video URL (contains /videos/ or /library/videos/)
+          if (normalized && (normalized.includes('/videos/') || normalized.includes('/library/videos/'))) {
+            return normalized;
+          }
+          return null;
+        })
         .filter(url => url !== null);
     }
     if (plan.song_suggestions) {
       plan.song_suggestions = plan.song_suggestions
-        .map(url => normalizeJWOrgURL(url))
+        .map(url => {
+          const normalized = normalizeJWOrgURL(url);
+          // Validate it's a music/song URL (contains /music-songs/ or /library/music-songs/ or VODMusic)
+          if (normalized && (normalized.includes('/music-songs/') || normalized.includes('/library/music-songs/') || normalized.includes('VODMusic'))) {
+            return normalized;
+          }
+          return null;
+        })
         .filter(url => url !== null);
+    }
+    
+    // Add a note if theme was provided but no relevant media was found
+    if (theme && plan.video_suggestions && plan.video_suggestions.length === 0 && plan.song_suggestions && plan.song_suggestions.length === 0) {
+      if (!plan.notes) plan.notes = '';
+      plan.notes += `\n\nNote: Please browse JW.org for videos and songs related to "${theme}" at:\n- Videos: https://www.jw.org/en/library/videos/\n- Songs: https://www.jw.org/en/library/music-songs/`;
     }
 
     res.json(plan);

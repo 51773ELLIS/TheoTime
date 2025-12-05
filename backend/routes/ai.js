@@ -63,6 +63,46 @@ const extractActivities = (text) => {
   return activities.length > 0 ? activities : null;
 };
 
+// Helper function to normalize JW.org URLs
+const normalizeJWOrgURL = (url) => {
+  if (!url) return null;
+  
+  // Remove any markdown formatting
+  url = url.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '$2'); // Remove markdown links
+  url = url.trim();
+  
+  // If it's already a full URL, return it
+  if (url.startsWith('http://') || url.startsWith('https://')) {
+    // Ensure it's a JW.org domain
+    if (url.includes('jw.org') || url.includes('wol.jw.org')) {
+      return url;
+    }
+    return null; // Not a JW.org URL
+  }
+  
+  // If it contains jw.org but doesn't start with http, add https://
+  if (url.includes('jw.org') || url.includes('wol.jw.org')) {
+    // Extract the path
+    const jwMatch = url.match(/(?:www\.)?(jw\.org|wol\.jw\.org)(\/.*)?/i);
+    if (jwMatch) {
+      const domain = jwMatch[1].toLowerCase();
+      const path = jwMatch[2] || '';
+      return `https://www.${domain}${path}`;
+    }
+  }
+  
+  // Try to extract URL from text
+  const urlMatch = url.match(/(https?:\/\/[^\s]+)/);
+  if (urlMatch) {
+    const foundUrl = urlMatch[1];
+    if (foundUrl.includes('jw.org') || foundUrl.includes('wol.jw.org')) {
+      return foundUrl;
+    }
+  }
+  
+  return null;
+};
+
 const extractVideoSuggestions = (text) => {
   const videos = [];
   const videoSection = text.match(/(?:video(?: suggestions?|s?))[:\-]?\s*([\s\S]*?)(?:\n\n|\n(?:songs?|notes|activities|discussion)|$)/i);
@@ -70,7 +110,10 @@ const extractVideoSuggestions = (text) => {
     const lines = videoSection[1].split('\n');
     lines.forEach(line => {
       const match = line.match(/^\s*[\d\-•]\s*(.+)$/);
-      if (match && match[1].includes('jw.org')) videos.push(match[1].trim());
+      if (match) {
+        const url = normalizeJWOrgURL(match[1].trim());
+        if (url) videos.push(url);
+      }
     });
   }
   return videos.length > 0 ? videos : null;
@@ -83,7 +126,10 @@ const extractSongSuggestions = (text) => {
     const lines = songSection[1].split('\n');
     lines.forEach(line => {
       const match = line.match(/^\s*[\d\-•]\s*(.+)$/);
-      if (match && match[1].includes('jw.org')) songs.push(match[1].trim());
+      if (match) {
+        const url = normalizeJWOrgURL(match[1].trim());
+        if (url) songs.push(url);
+      }
     });
   }
   return songs.length > 0 ? songs : null;
@@ -119,16 +165,24 @@ Provide a structured plan with:
 1. Bible reading (suggest specific chapters/verses)
 2. Discussion questions
 3. Activity suggestions (drawing, role-play, etc.)
-4. JW.org video or song recommendations (only suggest content from jw.org or wol.jw.org)
+4. JW.org video or song recommendations
 
-Format your response as JSON with: title, bible_reading, discussion_questions (array), activities (array), video_suggestions (array), song_suggestions (array), notes.`;
+IMPORTANT: For video_suggestions and song_suggestions, you MUST provide FULL URLs starting with https://www.jw.org/ or https://wol.jw.org/
+Examples:
+- https://www.jw.org/en/library/videos/#en/mediaitems/VODChildren/pub-jwb-XXX_1_VIDEO
+- https://www.jw.org/en/library/music-songs/#en/mediaitems/VODMusic/pub-jwb-XXX_1_AUDIO
+- https://wol.jw.org/en/wol/d/r1/lp-e/XXX
+
+Do NOT provide partial URLs or just descriptions. Only include actual working JW.org URLs.
+
+Format your response as JSON with: title, bible_reading, discussion_questions (array), activities (array), video_suggestions (array of full URLs), song_suggestions (array of full URLs), notes.`;
 
     const completion = await openai.chat.completions.create({
       model: (await dbGet("SELECT value FROM settings WHERE key = 'openai_model'")).value || 'gpt-3.5-turbo',
       messages: [
         {
           role: 'system',
-          content: 'You are a helpful assistant for Jehovah\'s Witness families. Only suggest content from jw.org or wol.jw.org. Keep suggestions Bible-based and appropriate for family worship.'
+          content: 'You are a helpful assistant for Jehovah\'s Witness families. Only suggest content from jw.org or wol.jw.org. When providing video or song links, you MUST provide complete URLs starting with https://www.jw.org/ or https://wol.jw.org/. Never provide partial URLs or just descriptions. Keep suggestions Bible-based and appropriate for family worship.'
         },
         {
           role: 'user',
@@ -179,6 +233,18 @@ Format your response as JSON with: title, bible_reading, discussion_questions (a
     }
     if (plan.song_suggestions && !Array.isArray(plan.song_suggestions)) {
       plan.song_suggestions = [plan.song_suggestions];
+    }
+    
+    // Normalize all video and song URLs to ensure they're full JW.org URLs
+    if (plan.video_suggestions) {
+      plan.video_suggestions = plan.video_suggestions
+        .map(url => normalizeJWOrgURL(url))
+        .filter(url => url !== null);
+    }
+    if (plan.song_suggestions) {
+      plan.song_suggestions = plan.song_suggestions
+        .map(url => normalizeJWOrgURL(url))
+        .filter(url => url !== null);
     }
 
     res.json(plan);

@@ -7,29 +7,44 @@
           Manage children profiles and spiritual goals
         </p>
       </div>
+      <button
+        v-if="authStore.isParent"
+        @click="showAddProfileModal"
+        class="btn btn-primary"
+      >
+        + Add Profile
+      </button>
     </div>
 
     <!-- Profiles -->
-    <div v-if="authStore.isParent" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-      <div
-        v-for="profile in profiles"
-        :key="profile.id"
-        class="card"
-      >
-        <h3 class="text-xl font-semibold text-gray-900 dark:text-white mb-2">
-          {{ profile.full_name || profile.username }}
-        </h3>
-        <div class="space-y-2 text-sm text-gray-600 dark:text-gray-400">
-          <p v-if="profile.age">Age: {{ profile.age }}</p>
-          <p v-if="profile.interests">Interests: {{ profile.interests }}</p>
-          <p v-if="profile.favorite_characters">Favorite Characters: {{ profile.favorite_characters }}</p>
-        </div>
-        <button
-          @click="editProfile(profile)"
-          class="mt-4 btn btn-secondary text-sm"
+    <div v-if="authStore.isParent">
+      <div v-if="profiles.length === 0" class="card text-center py-8">
+        <p class="text-gray-500 dark:text-gray-400 mb-4">No profiles yet. Create profiles for your children/family members.</p>
+        <p class="text-sm text-gray-400 dark:text-gray-500 mb-4">
+          First create users in <strong>Settings > User Management</strong>, then add their profiles here.
+        </p>
+      </div>
+      <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div
+          v-for="profile in profiles"
+          :key="profile.id"
+          class="card"
         >
-          Edit Profile
-        </button>
+          <h3 class="text-xl font-semibold text-gray-900 dark:text-white mb-2">
+            {{ profile.full_name || profile.username }}
+          </h3>
+          <div class="space-y-2 text-sm text-gray-600 dark:text-gray-400">
+            <p v-if="profile.age">Age: {{ profile.age }}</p>
+            <p v-if="profile.interests">Interests: {{ profile.interests }}</p>
+            <p v-if="profile.favorite_characters">Favorite Characters: {{ profile.favorite_characters }}</p>
+          </div>
+          <button
+            @click="editProfile(profile)"
+            class="mt-4 btn btn-secondary text-sm"
+          >
+            Edit Profile
+          </button>
+        </div>
       </div>
     </div>
 
@@ -99,8 +114,23 @@
     <!-- Profile Modal -->
     <div v-if="showProfileModal && authStore.isParent" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div class="bg-white dark:bg-gray-800 rounded-lg max-w-md w-full p-6">
-        <h2 class="text-2xl font-bold mb-4">Edit Profile</h2>
+        <h2 class="text-2xl font-bold mb-4">{{ editingProfile ? 'Edit Profile' : 'Add Profile' }}</h2>
         <form @submit.prevent="saveProfile" class="space-y-4">
+          <div v-if="!editingProfile">
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Select Child/Family Member</label>
+            <select v-model="profileForm.user_id" required class="input">
+              <option value="">-- Select a user --</option>
+              <option v-for="user in availableUsers" :key="user.id" :value="user.id">
+                {{ user.full_name || user.username }} ({{ user.role }})
+              </option>
+            </select>
+            <p v-if="availableUsers.length === 0" class="text-xs text-red-500 dark:text-red-400 mt-1">
+              No available users. Create child users in Settings > User Management first.
+            </p>
+            <p v-else class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+              Select a user to create a profile for
+            </p>
+          </div>
           <div>
             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Age</label>
             <input v-model.number="profileForm.age" type="number" min="0" max="120" class="input" />
@@ -119,7 +149,7 @@
           </div>
           <div class="flex space-x-3">
             <button type="submit" class="flex-1 btn btn-primary">Save</button>
-            <button type="button" @click="showProfileModal = false" class="flex-1 btn btn-secondary">Cancel</button>
+            <button type="button" @click="closeProfileModal" class="flex-1 btn btn-secondary">Cancel</button>
           </div>
         </form>
       </div>
@@ -164,6 +194,7 @@ import api from '@/utils/api';
 const authStore = useAuthStore();
 const profiles = ref([]);
 const goals = ref([]);
+const availableUsers = ref([]);
 const showProfileModal = ref(false);
 const showGoalModal = ref(false);
 const editingProfile = ref(null);
@@ -189,6 +220,7 @@ onMounted(async () => {
   await loadGoals();
   if (authStore.isParent) {
     await loadProfiles();
+    await loadAvailableUsers();
   }
 });
 
@@ -210,6 +242,34 @@ const loadGoals = async () => {
   }
 };
 
+const loadAvailableUsers = async () => {
+  try {
+    const response = await api.get('/users');
+    // Get all child users, excluding those who already have profiles
+    const usersWithProfiles = profiles.value.map(p => p.user_id);
+    availableUsers.value = response.data.filter(
+      user => user.role === 'child' && !usersWithProfiles.includes(user.id)
+    );
+  } catch (error) {
+    console.error('Failed to load available users:', error);
+    // Fallback: try to get all users
+    availableUsers.value = [];
+  }
+};
+
+const showAddProfileModal = () => {
+  editingProfile.value = null;
+  profileForm.value = {
+    user_id: null,
+    age: null,
+    interests: '',
+    favorite_characters: '',
+    favorite_stories: ''
+  };
+  showProfileModal.value = true;
+  loadAvailableUsers(); // Refresh available users
+};
+
 const editProfile = (profile) => {
   editingProfile.value = profile;
   profileForm.value = {
@@ -224,12 +284,18 @@ const editProfile = (profile) => {
 
 const saveProfile = async () => {
   try {
+    if (!profileForm.value.user_id) {
+      alert('Please select a user');
+      return;
+    }
     await api.post('/children/profiles', profileForm.value);
     showProfileModal.value = false;
+    editingProfile.value = null;
     await loadProfiles();
+    await loadAvailableUsers(); // Refresh available users list
   } catch (error) {
     console.error('Failed to save profile:', error);
-    alert('Failed to save profile');
+    alert(error.response?.data?.error || 'Failed to save profile');
   }
 };
 
@@ -295,6 +361,18 @@ const closeGoalModal = () => {
     description: '',
     target_date: '',
     progress_notes: ''
+  };
+};
+
+const closeProfileModal = () => {
+  showProfileModal.value = false;
+  editingProfile.value = null;
+  profileForm.value = {
+    user_id: null,
+    age: null,
+    interests: '',
+    favorite_characters: '',
+    favorite_stories: ''
   };
 };
 

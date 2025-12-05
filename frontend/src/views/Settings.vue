@@ -96,10 +96,22 @@
         <div>
           <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">OpenAI Model</label>
           <select v-model="settings.openai_model" @change="updateSetting('openai_model', settings.openai_model)" class="input">
-            <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
-            <option value="gpt-4">GPT-4</option>
-            <option value="gpt-4-turbo">GPT-4 Turbo</option>
+            <optgroup label="GPT-3.5 Models">
+              <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
+            </optgroup>
+            <optgroup label="GPT-4 Models">
+              <option value="gpt-4">GPT-4</option>
+              <option value="gpt-4-turbo">GPT-4 Turbo</option>
+              <option value="gpt-4o">GPT-4o</option>
+            </optgroup>
+            <optgroup label="Mini Models (Cost-Effective)">
+              <option value="gpt-4o-mini">GPT-4o Mini</option>
+              <option value="gpt-3.5-turbo-0125">GPT-3.5 Turbo (Latest)</option>
+            </optgroup>
           </select>
+          <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+            Mini models offer similar quality at lower cost
+          </p>
         </div>
       </div>
     </div>

@@ -221,7 +221,7 @@ const editPlan = (plan) => {
 };
 
 const logWorship = (plan) => {
-  selectedPlanForLog = plan;
+  selectedPlanForLog.value = plan;
   logForm.value.worship_plan_id = plan.id;
   showLogModal.value = true;
 };

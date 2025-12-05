@@ -126,13 +126,22 @@ const loadEvents = async () => {
   try {
     const response = await api.get('/events');
     events.value = response.data;
+    
+    // Map events for FullCalendar
+    // Since we generate recurring instances on the backend, we just display all events
     calendarOptions.value.events = events.value.map(event => ({
       id: event.id,
       title: event.title,
       start: event.start_date,
-      end: event.end_date,
+      end: event.end_date || null,
       backgroundColor: getEventColor(event.event_type),
-      borderColor: getEventColor(event.event_type)
+      borderColor: getEventColor(event.event_type),
+      extendedProps: {
+        event_type: event.event_type,
+        description: event.description,
+        is_recurring: event.is_recurring === 1,
+        recurrence_pattern: event.recurrence_pattern
+      }
     }));
   } catch (error) {
     console.error('Failed to load events:', error);

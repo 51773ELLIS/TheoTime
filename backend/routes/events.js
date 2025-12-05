@@ -63,6 +63,42 @@ router.get('/:id', authenticateToken, async (req, res) => {
   }
 });
 
+// Helper function to generate recurring event instances
+const generateRecurringInstances = (startDate, endDate, recurrencePattern, count = 52) => {
+  const instances = [];
+  const start = new Date(startDate);
+  const end = endDate ? new Date(endDate) : null;
+
+  for (let i = 0; i < count; i++) {
+    const instanceStart = new Date(start);
+    const instanceEnd = end ? new Date(end) : null;
+
+    switch (recurrencePattern) {
+      case 'weekly':
+        instanceStart.setDate(start.getDate() + (i * 7));
+        if (instanceEnd) instanceEnd.setDate(end.getDate() + (i * 7));
+        break;
+      case 'biweekly':
+        instanceStart.setDate(start.getDate() + (i * 14));
+        if (instanceEnd) instanceEnd.setDate(end.getDate() + (i * 14));
+        break;
+      case 'monthly':
+        instanceStart.setMonth(start.getMonth() + i);
+        if (instanceEnd) instanceEnd.setMonth(end.getMonth() + i);
+        break;
+      default:
+        return instances; // Invalid pattern, return empty
+    }
+
+    instances.push({
+      start: instanceStart.toISOString(),
+      end: instanceEnd ? instanceEnd.toISOString() : null
+    });
+  }
+
+  return instances;
+};
+
 // Create event
 router.post('/', authenticateToken, [
   body('title').notEmpty().withMessage('Title is required'),
@@ -80,14 +116,36 @@ router.post('/', authenticateToken, [
     // Set user_id - parents can assign to others, children can only create for themselves
     const assignedUserId = req.user.role === 'parent' ? (user_id || req.user.id) : req.user.id;
 
-    const result = await dbRun(
-      `INSERT INTO events (user_id, title, description, event_type, start_date, end_date, is_recurring, recurrence_pattern, color, reminder_minutes)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [assignedUserId, title, description || null, event_type, start_date, end_date || null, is_recurring ? 1 : 0, recurrence_pattern || null, color || null, reminder_minutes || null]
-    );
+    // If recurring, generate instances (up to 1 year ahead)
+    if (is_recurring && recurrence_pattern) {
+      const instances = generateRecurringInstances(start_date, end_date, recurrence_pattern, 52);
+      const createdEvents = [];
 
-    const event = await dbGet('SELECT * FROM events WHERE id = ?', [result.lastID]);
-    res.status(201).json(event);
+      for (const instance of instances) {
+        const result = await dbRun(
+          `INSERT INTO events (user_id, title, description, event_type, start_date, end_date, is_recurring, recurrence_pattern, color, reminder_minutes)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          [assignedUserId, title, description || null, event_type, instance.start, instance.end, 1, recurrence_pattern, color || null, reminder_minutes || null]
+        );
+        const event = await dbGet('SELECT * FROM events WHERE id = ?', [result.lastID]);
+        createdEvents.push(event);
+      }
+
+      return res.status(201).json({ 
+        message: `Created ${createdEvents.length} recurring events`,
+        events: createdEvents 
+      });
+    } else {
+      // Single event
+      const result = await dbRun(
+        `INSERT INTO events (user_id, title, description, event_type, start_date, end_date, is_recurring, recurrence_pattern, color, reminder_minutes)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [assignedUserId, title, description || null, event_type, start_date, end_date || null, is_recurring ? 1 : 0, recurrence_pattern || null, color || null, reminder_minutes || null]
+      );
+
+      const event = await dbGet('SELECT * FROM events WHERE id = ?', [result.lastID]);
+      res.status(201).json(event);
+    }
   } catch (error) {
     console.error('Create event error:', error);
     res.status(500).json({ error: 'Failed to create event' });

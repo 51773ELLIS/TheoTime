@@ -49,14 +49,26 @@
             <li v-for="(q, i) in (Array.isArray(generatedPlan.discussion_questions) ? generatedPlan.discussion_questions : [])" :key="i">{{ q }}</li>
           </ul>
         </div>
-        <div v-if="generatedPlan.activities" class="mb-3">
+        <div v-if="generatedPlan.activities && Array.isArray(generatedPlan.activities) && generatedPlan.activities.length > 0" class="mb-3">
           <p class="font-medium text-gray-700 dark:text-gray-300">Activities:</p>
           <ul class="list-disc list-inside text-gray-600 dark:text-gray-400">
-            <li v-for="(a, i) in (Array.isArray(generatedPlan.activities) ? generatedPlan.activities : [])" :key="i">{{ a }}</li>
+            <li v-for="(a, i) in generatedPlan.activities" :key="i">{{ a }}</li>
+          </ul>
+        </div>
+        <div v-if="generatedPlan.video_suggestions && Array.isArray(generatedPlan.video_suggestions) && generatedPlan.video_suggestions.length > 0" class="mb-3">
+          <p class="font-medium text-gray-700 dark:text-gray-300">Video Suggestions:</p>
+          <ul class="list-disc list-inside text-gray-600 dark:text-gray-400">
+            <li v-for="(v, i) in generatedPlan.video_suggestions" :key="i">{{ v }}</li>
+          </ul>
+        </div>
+        <div v-if="generatedPlan.song_suggestions && Array.isArray(generatedPlan.song_suggestions) && generatedPlan.song_suggestions.length > 0" class="mb-3">
+          <p class="font-medium text-gray-700 dark:text-gray-300">Song Suggestions:</p>
+          <ul class="list-disc list-inside text-gray-600 dark:text-gray-400">
+            <li v-for="(s, i) in generatedPlan.song_suggestions" :key="i">{{ s }}</li>
           </ul>
         </div>
         <div v-if="generatedPlan.notes" class="mb-3">
-          <p class="font-medium text-gray-700 dark:text-gray-300">Notes:</p>
+          <p class="font-medium text-gray-700 dark:text-gray-300">Additional Notes:</p>
           <p class="text-gray-600 dark:text-gray-400 whitespace-pre-line">{{ generatedPlan.notes }}</p>
         </div>
         <button @click="saveGeneratedPlan" class="btn btn-primary mt-4">
@@ -166,11 +178,59 @@ const generateActivities = async () => {
 
 const saveGeneratedPlan = async () => {
   try {
+    // Extract video and song links from AI response
+    const videoLinks = Array.isArray(generatedPlan.value.video_suggestions) 
+      ? generatedPlan.value.video_suggestions 
+      : [];
+    const songLinks = Array.isArray(generatedPlan.value.song_suggestions) 
+      ? generatedPlan.value.song_suggestions 
+      : [];
+    
+    // Combine activities array
+    const activities = Array.isArray(generatedPlan.value.activities) 
+      ? generatedPlan.value.activities 
+      : [];
+    
+    // Format notes as human-readable text
+    let notesParts = [];
+    
+    // Add discussion questions if present
+    if (generatedPlan.value.discussion_questions && Array.isArray(generatedPlan.value.discussion_questions) && generatedPlan.value.discussion_questions.length > 0) {
+      notesParts.push('Discussion Questions:');
+      generatedPlan.value.discussion_questions.forEach((q, i) => {
+        notesParts.push(`${i + 1}. ${q}`);
+      });
+      notesParts.push(''); // Empty line
+    }
+    
+    // Add any additional notes from AI
+    if (generatedPlan.value.notes) {
+      notesParts.push(generatedPlan.value.notes);
+    }
+    
+    // Add video suggestions if not already in video_links
+    if (videoLinks.length > 0) {
+      notesParts.push('\nVideo Suggestions:');
+      videoLinks.forEach((link, i) => {
+        notesParts.push(`${i + 1}. ${link}`);
+      });
+    }
+    
+    // Add song suggestions if not already in song_links
+    if (songLinks.length > 0) {
+      notesParts.push('\nSong Suggestions:');
+      songLinks.forEach((link, i) => {
+        notesParts.push(`${i + 1}. ${link}`);
+      });
+    }
+
     const planData = {
       title: generatedPlan.value.title || 'AI Generated Plan',
       bible_reading: generatedPlan.value.bible_reading || '',
-      activities: Array.isArray(generatedPlan.value.activities) ? generatedPlan.value.activities : [],
-      notes: generatedPlan.value.notes || JSON.stringify(generatedPlan.value, null, 2)
+      video_links: videoLinks,
+      song_links: songLinks,
+      activities: activities,
+      notes: notesParts.join('\n').trim() || ''
     };
 
     await api.post('/worship/plans', planData);

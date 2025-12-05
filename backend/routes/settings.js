@@ -12,6 +12,67 @@ const __dirname = dirname(__filename);
 
 const router = express.Router();
 
+// Helper function to get day of week number (0 = Sunday, 6 = Saturday)
+const getDayOfWeek = (dayName) => {
+  const days = { sunday: 0, monday: 1, tuesday: 2, wednesday: 3, thursday: 4, friday: 5, saturday: 6 };
+  return days[dayName?.toLowerCase()] ?? 0;
+};
+
+// Helper function to create/update worship night recurring events
+const syncWorshipNightEvents = async (userId, worshipNight) => {
+  try {
+    // Delete existing auto-generated worship night events
+    await dbRun(
+      `DELETE FROM events WHERE user_id = ? AND event_type = 'worship' AND title = 'Family Worship Night' AND is_recurring = 1`,
+      [userId]
+    );
+
+    // Calculate next occurrence of the worship night
+    const today = new Date();
+    const dayOfWeek = getDayOfWeek(worshipNight);
+    const currentDay = today.getDay();
+    let daysUntilNext = (dayOfWeek - currentDay + 7) % 7;
+    if (daysUntilNext === 0) daysUntilNext = 7; // If today is the day, schedule for next week
+
+    const nextWorshipDate = new Date(today);
+    nextWorshipDate.setDate(today.getDate() + daysUntilNext);
+    nextWorshipDate.setHours(19, 0, 0, 0); // Default to 7:00 PM
+
+    const endDate = new Date(nextWorshipDate);
+    endDate.setHours(20, 0, 0, 0); // Default 1 hour duration
+
+    // Generate 52 weekly instances (1 year)
+    for (let i = 0; i < 52; i++) {
+      const instanceStart = new Date(nextWorshipDate);
+      instanceStart.setDate(nextWorshipDate.getDate() + (i * 7));
+      
+      const instanceEnd = new Date(endDate);
+      instanceEnd.setDate(endDate.getDate() + (i * 7));
+
+      await dbRun(
+        `INSERT INTO events (user_id, title, description, event_type, start_date, end_date, is_recurring, recurrence_pattern, color)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          userId,
+          'Family Worship Night',
+          'Weekly Family Worship session',
+          'worship',
+          instanceStart.toISOString(),
+          instanceEnd.toISOString(),
+          1,
+          'weekly',
+          '#0ea5e9'
+        ]
+      );
+    }
+
+    console.log(`Created 52 weekly Family Worship Night events for user ${userId}`);
+  } catch (error) {
+    console.error('Error syncing worship night events:', error);
+    throw error;
+  }
+};
+
 // Get all settings
 router.get('/', authenticateToken, async (req, res) => {
   try {
@@ -20,6 +81,23 @@ router.get('/', authenticateToken, async (req, res) => {
     settings.forEach(s => {
       settingsObj[s.key] = s.value;
     });
+    
+    // If worship_night is set but no worship events exist, create them
+    if (settingsObj.worship_night && req.user.role === 'parent') {
+      const existingWorshipEvents = await dbAll(
+        `SELECT id FROM events WHERE user_id = ? AND event_type = 'worship' AND title = 'Family Worship Night' AND is_recurring = 1 LIMIT 1`,
+        [req.user.id]
+      );
+      
+      if (!existingWorshipEvents || existingWorshipEvents.length === 0) {
+        try {
+          await syncWorshipNightEvents(req.user.id, settingsObj.worship_night);
+        } catch (error) {
+          console.error('Failed to initialize worship night events:', error);
+        }
+      }
+    }
+    
     res.json(settingsObj);
   } catch (error) {
     console.error('Get settings error:', error);
@@ -67,6 +145,16 @@ router.put('/:key', authenticateToken, [
       await dbRun('UPDATE settings SET value = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?', [value, existing.id]);
     } else {
       await dbRun('INSERT INTO settings (key, value, user_id) VALUES (?, ?, ?)', [key, value, req.user.id]);
+    }
+
+    // If worship_night setting is updated, sync worship night events
+    if (key === 'worship_night' && req.user.role === 'parent') {
+      try {
+        await syncWorshipNightEvents(req.user.id, value);
+      } catch (error) {
+        console.error('Failed to sync worship night events:', error);
+        // Don't fail the request, just log the error
+      }
     }
 
     res.json({ key, value });

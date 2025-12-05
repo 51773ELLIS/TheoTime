@@ -26,6 +26,69 @@ const isAIEnabled = async () => {
   return aiEnabled && aiEnabled.value === 'true';
 };
 
+// Helper functions to extract structured data from text if JSON parsing fails
+const extractTitle = (text) => {
+  const titleMatch = text.match(/(?:title|Title)[:\-]\s*(.+?)(?:\n|$)/i);
+  return titleMatch ? titleMatch[1].trim() : null;
+};
+
+const extractBibleReading = (text) => {
+  const bibleMatch = text.match(/(?:bible reading|Bible Reading|bible_reading)[:\-]\s*(.+?)(?:\n|$)/i);
+  return bibleMatch ? bibleMatch[1].trim() : null;
+};
+
+const extractDiscussionQuestions = (text) => {
+  const questions = [];
+  const questionSection = text.match(/(?:discussion questions?|questions?)[:\-]?\s*([\s\S]*?)(?:\n\n|\n(?:activities|videos|songs|notes)|$)/i);
+  if (questionSection) {
+    const lines = questionSection[1].split('\n');
+    lines.forEach(line => {
+      const match = line.match(/^\s*[\d\-•]\s*(.+)$/);
+      if (match) questions.push(match[1].trim());
+    });
+  }
+  return questions.length > 0 ? questions : null;
+};
+
+const extractActivities = (text) => {
+  const activities = [];
+  const activitySection = text.match(/(?:activities?|activity suggestions?)[:\-]?\s*([\s\S]*?)(?:\n\n|\n(?:videos?|songs?|notes|discussion)|$)/i);
+  if (activitySection) {
+    const lines = activitySection[1].split('\n');
+    lines.forEach(line => {
+      const match = line.match(/^\s*[\d\-•]\s*(.+)$/);
+      if (match) activities.push(match[1].trim());
+    });
+  }
+  return activities.length > 0 ? activities : null;
+};
+
+const extractVideoSuggestions = (text) => {
+  const videos = [];
+  const videoSection = text.match(/(?:video(?: suggestions?|s?))[:\-]?\s*([\s\S]*?)(?:\n\n|\n(?:songs?|notes|activities|discussion)|$)/i);
+  if (videoSection) {
+    const lines = videoSection[1].split('\n');
+    lines.forEach(line => {
+      const match = line.match(/^\s*[\d\-•]\s*(.+)$/);
+      if (match && match[1].includes('jw.org')) videos.push(match[1].trim());
+    });
+  }
+  return videos.length > 0 ? videos : null;
+};
+
+const extractSongSuggestions = (text) => {
+  const songs = [];
+  const songSection = text.match(/(?:song(?: suggestions?|s?))[:\-]?\s*([\s\S]*?)(?:\n\n|\n(?:videos?|notes|activities|discussion)|$)/i);
+  if (songSection) {
+    const lines = songSection[1].split('\n');
+    lines.forEach(line => {
+      const match = line.match(/^\s*[\d\-•]\s*(.+)$/);
+      if (match && match[1].includes('jw.org')) songs.push(match[1].trim());
+    });
+  }
+  return songs.length > 0 ? songs : null;
+};
+
 // Generate worship plan suggestion
 router.post('/worship-plan', authenticateToken, requireRole('parent'), [
   body('age').optional().isInt({ min: 0, max: 120 }),
@@ -76,13 +139,46 @@ Format your response as JSON with: title, bible_reading, discussion_questions (a
       max_tokens: 1000
     });
 
-    const responseText = completion.choices[0].message.content;
+    const responseText = completion.choices[0].message.content.trim();
     let plan;
+    
+    // Try to extract JSON from the response (sometimes AI wraps it in markdown code blocks)
+    let jsonText = responseText;
+    const jsonMatch = responseText.match(/```(?:json)?\s*(\{[\s\S]*\})\s*```/);
+    if (jsonMatch) {
+      jsonText = jsonMatch[1];
+    }
+    
     try {
-      plan = JSON.parse(responseText);
+      plan = JSON.parse(jsonText);
     } catch (e) {
-      // If not JSON, return as notes
-      plan = { notes: responseText };
+      // If not JSON, try to parse as structured text
+      console.warn('Failed to parse AI response as JSON, attempting to extract structured data:', e.message);
+      
+      // Try to extract structured information from text
+      plan = {
+        title: extractTitle(responseText),
+        bible_reading: extractBibleReading(responseText),
+        discussion_questions: extractDiscussionQuestions(responseText),
+        activities: extractActivities(responseText),
+        video_suggestions: extractVideoSuggestions(responseText),
+        song_suggestions: extractSongSuggestions(responseText),
+        notes: responseText
+      };
+    }
+    
+    // Ensure arrays are arrays
+    if (plan.discussion_questions && !Array.isArray(plan.discussion_questions)) {
+      plan.discussion_questions = [plan.discussion_questions];
+    }
+    if (plan.activities && !Array.isArray(plan.activities)) {
+      plan.activities = [plan.activities];
+    }
+    if (plan.video_suggestions && !Array.isArray(plan.video_suggestions)) {
+      plan.video_suggestions = [plan.video_suggestions];
+    }
+    if (plan.song_suggestions && !Array.isArray(plan.song_suggestions)) {
+      plan.song_suggestions = [plan.song_suggestions];
     }
 
     res.json(plan);

@@ -1,24 +1,28 @@
 <template>
-  <div class="space-y-6">
-    <div class="flex justify-between items-center">
+  <div class="space-y-4 sm:space-y-6">
+    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-0">
       <div>
-        <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Worship Planner</h1>
+        <h1 class="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">Worship Planner</h1>
         <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
           Plan and log your Family Worship sessions
         </p>
       </div>
-      <div class="flex space-x-3">
-        <button @click="showTemplateModal = true" class="btn btn-secondary">
+      <div class="flex flex-col sm:flex-row gap-2 sm:gap-3 w-full sm:w-auto">
+        <button @click="showTemplateModal = true" class="btn btn-secondary w-full sm:w-auto">
           Templates
         </button>
-        <button @click="showPlanModal = true" class="btn btn-primary">
+        <button @click="showPlanModal = true" class="btn btn-primary w-full sm:w-auto">
           + New Plan
         </button>
       </div>
     </div>
 
     <!-- Worship Plans -->
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+    <div v-if="plans.length === 0" class="card text-center py-8 text-gray-500 dark:text-gray-400">
+      <p>No worship plans yet.</p>
+      <p class="mt-2">Click "+ New Plan" to create your first worship plan.</p>
+    </div>
+    <div v-else class="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
       <div
         v-for="plan in plans"
         :key="plan.id"
@@ -47,6 +51,12 @@
             class="text-sm text-primary-600 dark:text-primary-400 hover:underline"
           >
             Log Session
+          </button>
+          <button
+            @click.stop="deletePlan(plan)"
+            class="text-sm text-red-600 dark:text-red-400 hover:underline"
+          >
+            Delete
           </button>
         </div>
       </div>
@@ -256,6 +266,20 @@ const closePlanModal = () => {
   videoLinksText.value = '';
   songLinksText.value = '';
   activitiesText.value = '';
+};
+
+const deletePlan = async (plan) => {
+  if (!confirm(`Are you sure you want to delete "${plan.title}"? This action cannot be undone.`)) {
+    return;
+  }
+
+  try {
+    await api.delete(`/worship/plans/${plan.id}`);
+    await loadPlans();
+  } catch (error) {
+    console.error('Failed to delete plan:', error);
+    alert('Failed to delete plan');
+  }
 };
 
 const formatDate = (dateString) => {

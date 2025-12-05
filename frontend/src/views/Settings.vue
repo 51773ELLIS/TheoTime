@@ -29,6 +29,9 @@
             <option value="friday">Friday</option>
             <option value="saturday">Saturday</option>
           </select>
+          <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+            This will automatically create weekly Family Worship Night events on your calendar
+          </p>
         </div>
       </div>
     </div>

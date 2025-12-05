@@ -415,7 +415,9 @@ async function handleEventClick(clickInfo) {
 
 function handleEventChange(changeInfo) {
   // Handle drag and drop updates
-  const event = events.value.find(e => e.id === changeInfo.event.id);
+  // Get the original numeric ID from extendedProps (FullCalendar converts IDs to strings)
+  const eventId = changeInfo.event.extendedProps?.originalId || parseInt(changeInfo.event.id);
+  const event = events.value.find(e => e.id === eventId);
   if (event) {
     updateEvent(event.id, {
       start_date: changeInfo.event.startStr,

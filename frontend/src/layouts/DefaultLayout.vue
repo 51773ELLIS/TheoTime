@@ -31,7 +31,7 @@
               {{ authStore.user?.full_name || authStore.user?.username }}
             </span>
             <button
-              @click="authStore.logout()"
+              @click="handleLogout"
               class="btn btn-secondary text-sm whitespace-nowrap"
             >
               Logout
@@ -77,7 +77,7 @@
               </div>
             </div>
             <button
-              @click="authStore.logout(); mobileMenuOpen = false"
+              @click="handleLogout"
               class="block w-full text-left pl-3 pr-4 py-2 text-base font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-md"
             >
               Logout
@@ -96,12 +96,19 @@
 
 <script setup>
 import { ref, computed } from 'vue';
-import { useRoute } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import { useAuthStore } from '@/store/auth';
 
 const route = useRoute();
+const router = useRouter();
 const authStore = useAuthStore();
 const mobileMenuOpen = ref(false);
+
+const handleLogout = () => {
+  authStore.logout();
+  mobileMenuOpen.value = false;
+  router.push('/login');
+};
 
 const navItems = computed(() => {
   const items = [

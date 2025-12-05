@@ -34,6 +34,12 @@
           <p class="text-blue-800 dark:text-blue-200 font-medium">{{ selectedEvent.worship_plan_title }}</p>
         </div>
 
+        <!-- Action Buttons for Parents -->
+        <div v-if="authStore.isParent" class="mb-4 flex flex-wrap gap-2">
+          <button @click="editEventFromDetails" class="btn btn-primary">Edit Event</button>
+          <button @click="deleteEventFromDetails" class="btn btn-danger">Delete Event</button>
+        </div>
+
         <div v-if="selectedEvent?.event_type === 'worship' && authStore.isParent && !selectedEvent?.is_completed && !selectedEvent?.has_completed_log" class="space-y-4">
           <!-- Assign Plan Section -->
           <div>
@@ -137,6 +143,9 @@
               <option value="biweekly">Bi-weekly</option>
               <option value="monthly">Monthly</option>
             </select>
+          </div>
+          <div v-if="editingEvent && authStore.isParent" class="flex space-x-3 mb-3">
+            <button type="button" @click="deleteEvent" class="flex-1 btn btn-danger">Delete Event</button>
           </div>
           <div class="flex space-x-3">
             <button type="submit" class="flex-1 btn btn-primary">Save</button>
@@ -384,6 +393,65 @@ const closeEventDetailsModal = () => {
     future_thoughts: '',
     notes: ''
   };
+};
+
+const editEventFromDetails = () => {
+  if (!selectedEvent.value) return;
+  
+  // Close details modal and open edit modal
+  closeEventDetailsModal();
+  
+  // Find the event in the events array
+  const event = events.value.find(e => e.id === selectedEvent.value.id);
+  if (event) {
+    editingEvent.value = event;
+    eventForm.value = {
+      title: event.title,
+      event_type: event.event_type,
+      start_date: event.start_date.replace('T', ' ').substring(0, 16),
+      end_date: event.end_date ? event.end_date.replace('T', ' ').substring(0, 16) : '',
+      description: event.description || '',
+      is_recurring: event.is_recurring === 1,
+      recurrence_pattern: event.recurrence_pattern || 'weekly'
+    };
+    showEventModal.value = true;
+  }
+};
+
+const deleteEventFromDetails = async () => {
+  if (!selectedEvent.value) return;
+  
+  if (!confirm(`Are you sure you want to delete "${selectedEvent.value.title}"? This action cannot be undone.`)) {
+    return;
+  }
+
+  try {
+    await api.delete(`/events/${selectedEvent.value.id}`);
+    await loadEvents();
+    alert('Event deleted successfully');
+    closeEventDetailsModal();
+  } catch (error) {
+    console.error('Failed to delete event:', error);
+    alert('Failed to delete event');
+  }
+};
+
+const deleteEvent = async () => {
+  if (!editingEvent.value) return;
+  
+  if (!confirm(`Are you sure you want to delete "${editingEvent.value.title}"? This action cannot be undone.`)) {
+    return;
+  }
+
+  try {
+    await api.delete(`/events/${editingEvent.value.id}`);
+    await loadEvents();
+    alert('Event deleted successfully');
+    closeModal();
+  } catch (error) {
+    console.error('Failed to delete event:', error);
+    alert('Failed to delete event');
+  }
 };
 
 const closeModal = () => {

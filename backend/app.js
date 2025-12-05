@@ -106,6 +106,7 @@ if (process.env.NODE_ENV === 'production') {
   });
 }
 
-app.listen(PORT, () => {
-  console.log(`TheoTime backend server running on port ${PORT}`);
+const HOST = process.env.HOST || '0.0.0.0'; // Listen on all interfaces for network access
+app.listen(PORT, HOST, () => {
+  console.log(`TheoTime backend server running on http://${HOST}:${PORT}`);
 });

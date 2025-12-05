@@ -417,30 +417,45 @@ const loadSessionData = async (eventId, planId) => {
   try {
     // Load event if eventId provided
     if (eventId) {
-      const eventResponse = await api.get(`/events/${eventId}`);
-      event.value = eventResponse.data;
-      
-      // Load plan from event
-      if (eventResponse.data.worship_plan_id) {
-        const planResponse = await api.get(`/worship/plans/${eventResponse.data.worship_plan_id}`);
-        plan.value = planResponse.data;
-      } else if (planId) {
-        const planResponse = await api.get(`/worship/plans/${planId}`);
-        plan.value = planResponse.data;
+      try {
+        const eventResponse = await api.get(`/events/${eventId}`);
+        event.value = eventResponse.data;
+        
+        // Use worship_plan_id from event, or fallback to planId from query
+        const planIdToLoad = eventResponse.data.worship_plan_id || planId;
+        
+        if (planIdToLoad) {
+          const planResponse = await api.get(`/worship/plans/${planIdToLoad}`);
+          plan.value = planResponse.data;
+        } else {
+          throw new Error('No worship plan found for this event');
+        }
+      } catch (error) {
+        console.error('Failed to load event:', error);
+        // If event load fails but we have planId, try loading plan directly
+        if (planId) {
+          const planResponse = await api.get(`/worship/plans/${planId}`);
+          plan.value = planResponse.data;
+        } else {
+          throw error;
+        }
       }
     } else if (planId) {
       // Load plan directly
       const planResponse = await api.get(`/worship/plans/${planId}`);
       plan.value = planResponse.data;
+    } else {
+      throw new Error('No event ID or plan ID provided');
     }
 
     if (!plan.value) {
-      alert('Worship plan not found');
+      alert('Worship plan not found. Please make sure a plan is assigned to this event.');
       router.push('/worship');
     }
   } catch (error) {
     console.error('Failed to load session data:', error);
-    alert('Failed to load worship session');
+    const errorMessage = error.response?.data?.error || error.message || 'Failed to load worship session';
+    alert(`Error: ${errorMessage}`);
     router.push('/worship');
   } finally {
     loading.value = false;

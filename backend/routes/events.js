@@ -50,7 +50,11 @@ router.get('/', authenticateToken, async (req, res) => {
 // Get event by ID
 router.get('/:id', authenticateToken, async (req, res) => {
   try {
-    const event = await dbGet('SELECT * FROM events WHERE id = ?', [req.params.id]);
+    const event = await dbGet(`SELECT e.*, 
+      (SELECT wp.id FROM worship_plans wp WHERE wp.event_id = e.id LIMIT 1) as worship_plan_id,
+      (SELECT wp.title FROM worship_plans wp WHERE wp.event_id = e.id LIMIT 1) as worship_plan_title,
+      (SELECT COUNT(*) FROM worship_logs wl WHERE wl.event_id = e.id AND wl.is_completed = 1) as has_completed_log
+      FROM events e WHERE e.id = ?`, [req.params.id]);
     if (!event) {
       return res.status(404).json({ error: 'Event not found' });
     }

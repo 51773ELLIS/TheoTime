@@ -167,13 +167,24 @@ export const initializeDatabase = async () => {
       what_was_covered TEXT,
       reflections TEXT,
       notes TEXT,
-      future_thoughts TEXT,
-      is_completed BOOLEAN DEFAULT 0,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (worship_plan_id) REFERENCES worship_plans(id) ON DELETE CASCADE,
       FOREIGN KEY (event_id) REFERENCES events(id) ON DELETE CASCADE
     )
   `);
+  
+  // Add missing columns to worship_logs table (for migration)
+  try {
+    await dbRun(`ALTER TABLE worship_logs ADD COLUMN future_thoughts TEXT`);
+  } catch (e) {
+    // Column already exists, ignore
+  }
+  
+  try {
+    await dbRun(`ALTER TABLE worship_logs ADD COLUMN is_completed BOOLEAN DEFAULT 0`);
+  } catch (e) {
+    // Column already exists, ignore
+  }
   
   // Add is_completed column to events if it doesn't exist (for migration)
   try {

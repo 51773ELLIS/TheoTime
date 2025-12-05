@@ -51,17 +51,17 @@
         </div>
 
         <!-- Action Buttons for Parents -->
-        <div v-if="authStore.isParent" class="mb-4 flex flex-col sm:flex-row gap-2 border-t pt-4">
+        <div v-if="authStore.isParent || authStore.user?.role === 'parent'" class="mb-4 flex flex-col sm:flex-row gap-2 border-t pt-4">
           <button @click="editEventFromDetails" class="btn btn-primary flex-1">✏️ Edit Event</button>
           <button @click="deleteEventFromDetails" class="btn btn-danger flex-1">🗑️ Delete Event</button>
         </div>
         
         <!-- Show message for non-parent users -->
-        <div v-else class="mb-4 border-t pt-4">
+        <div v-else-if="authStore.user && authStore.user.role !== 'parent'" class="mb-4 border-t pt-4">
           <p class="text-sm text-gray-500 dark:text-gray-400">Only parents can edit or delete events.</p>
         </div>
 
-        <div v-if="selectedEvent?.event_type === 'worship' && authStore.isParent && !selectedEvent?.is_completed && !selectedEvent?.has_completed_log" class="space-y-4 mt-4 border-t pt-4">
+        <div v-if="selectedEvent?.event_type === 'worship' && (authStore.isParent || authStore.user?.role === 'parent') && !selectedEvent?.is_completed && !selectedEvent?.has_completed_log" class="space-y-4 mt-4 border-t pt-4">
           <!-- Assign Plan Section -->
           <div>
             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Assign Worship Plan</label>
@@ -165,7 +165,7 @@
               <option value="monthly">Monthly</option>
             </select>
           </div>
-          <div v-if="editingEvent && authStore.isParent" class="flex space-x-3 mb-3">
+          <div v-if="editingEvent && (authStore.isParent || authStore.user?.role === 'parent')" class="flex space-x-3 mb-3">
             <button type="button" @click="deleteEvent" class="flex-1 btn btn-danger">Delete Event</button>
           </div>
           <div class="flex space-x-3">
@@ -233,6 +233,10 @@ const calendarOptions = ref({
 });
 
 onMounted(async () => {
+  // Ensure auth is initialized
+  if (!authStore.user && authStore.token) {
+    await authStore.init();
+  }
   await loadEvents();
 });
 
@@ -296,6 +300,19 @@ async function handleEventClick(clickInfo) {
   // Prevent default behavior
   clickInfo.jsEvent.preventDefault();
   clickInfo.jsEvent.stopPropagation();
+  
+  // Ensure user is loaded
+  if (!authStore.user) {
+    await authStore.init();
+  }
+  
+  // Debug: Log user role for troubleshooting
+  console.log('User role check:', {
+    user: authStore.user,
+    role: authStore.user?.role,
+    isParent: authStore.isParent,
+    isParentComputed: authStore.user?.role === 'parent'
+  });
   
   // Get the original numeric ID from extendedProps or parse the string ID
   const eventId = clickInfo.event.extendedProps?.originalId || parseInt(clickInfo.event.id);

@@ -1,7 +1,7 @@
 <template>
-  <div class="space-y-6">
+  <div class="space-y-4 sm:space-y-6">
     <div>
-      <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Settings</h1>
+      <h1 class="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">Settings</h1>
       <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
         Configure your TheoTime preferences
       </p>
@@ -173,8 +173,8 @@
     </div>
 
     <!-- Add User Modal -->
-    <div v-if="showAddUserModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div class="bg-white dark:bg-gray-800 rounded-lg max-w-md w-full p-6">
+    <div v-if="showAddUserModal" class="mobile-modal">
+      <div class="mobile-modal-content">
         <h2 class="text-2xl font-bold mb-4">Add New User</h2>
         <form @submit.prevent="addUser" class="space-y-4">
           <div>

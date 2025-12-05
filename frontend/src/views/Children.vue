@@ -1,8 +1,8 @@
 <template>
-  <div class="space-y-6">
-    <div class="flex justify-between items-center">
+  <div class="space-y-4 sm:space-y-6">
+    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-0">
       <div>
-        <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Children Profiles</h1>
+        <h1 class="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">Children Profiles</h1>
         <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
           Manage children profiles and spiritual goals
         </p>
@@ -10,7 +10,7 @@
       <button
         v-if="authStore.isParent"
         @click="showAddProfileModal"
-        class="btn btn-primary"
+        class="btn btn-primary w-full sm:w-auto"
       >
         + Add Profile
       </button>
@@ -18,13 +18,13 @@
 
     <!-- Profiles -->
     <div v-if="authStore.isParent">
-      <div v-if="profiles.length === 0" class="card text-center py-8">
-        <p class="text-gray-500 dark:text-gray-400 mb-4">No profiles yet. Create profiles for your children/family members.</p>
-        <p class="text-sm text-gray-400 dark:text-gray-500 mb-4">
+      <div v-if="profiles.length === 0" class="card text-center py-6 sm:py-8">
+        <p class="text-gray-500 dark:text-gray-400 mb-4 text-sm sm:text-base">No profiles yet. Create profiles for your children/family members.</p>
+        <p class="text-xs sm:text-sm text-gray-400 dark:text-gray-500 mb-4">
           First create users in <strong>Settings > User Management</strong>, then add their profiles here.
         </p>
       </div>
-      <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div v-else class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
         <div
           v-for="profile in profiles"
           :key="profile.id"
@@ -112,8 +112,8 @@
     </div>
 
     <!-- Profile Modal -->
-    <div v-if="showProfileModal && authStore.isParent" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div class="bg-white dark:bg-gray-800 rounded-lg max-w-md w-full p-6">
+    <div v-if="showProfileModal && authStore.isParent" class="mobile-modal">
+      <div class="mobile-modal-content">
         <h2 class="text-2xl font-bold mb-4">{{ editingProfile ? 'Edit Profile' : 'Add Profile' }}</h2>
         <form @submit.prevent="saveProfile" class="space-y-4">
           <div v-if="!editingProfile">
@@ -156,8 +156,8 @@
     </div>
 
     <!-- Goal Modal -->
-    <div v-if="showGoalModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div class="bg-white dark:bg-gray-800 rounded-lg max-w-md w-full p-6">
+    <div v-if="showGoalModal" class="mobile-modal">
+      <div class="mobile-modal-content">
         <h2 class="text-2xl font-bold mb-4">{{ editingGoal ? 'Edit Goal' : 'New Spiritual Goal' }}</h2>
         <form @submit.prevent="saveGoal" class="space-y-4">
           <div>

@@ -1,15 +1,15 @@
 <template>
-  <div class="space-y-6">
-    <div class="flex justify-between items-center">
+  <div class="space-y-4 sm:space-y-6">
+    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-0">
       <div>
-        <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Homework</h1>
+        <h1 class="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">Homework</h1>
         <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
           Assign and track spiritual homework
         </p>
       </div>
       <button
         @click="showModal = true"
-        class="btn btn-primary"
+        class="btn btn-primary w-full sm:w-auto"
       >
         + Assign Homework
       </button>
@@ -100,8 +100,8 @@
     </div>
 
     <!-- Modal -->
-    <div v-if="showModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div class="bg-white dark:bg-gray-800 rounded-lg max-w-md w-full p-6">
+    <div v-if="showModal" class="mobile-modal">
+      <div class="mobile-modal-content">
         <h2 class="text-2xl font-bold mb-4">{{ editingHomework ? 'Edit Homework' : 'Assign Homework' }}</h2>
         <form @submit.prevent="saveHomework" class="space-y-4">
           <div>

@@ -1,15 +1,15 @@
 <template>
-  <div class="space-y-6">
-    <div class="flex justify-between items-center">
+  <div class="space-y-4 sm:space-y-6">
+    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-0">
       <div>
-        <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Calendar</h1>
+        <h1 class="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">Calendar</h1>
         <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
           Manage your worship nights, study sessions, and events
         </p>
       </div>
       <button
         @click="showEventModal = true"
-        class="btn btn-primary"
+        class="btn btn-primary w-full sm:w-auto"
       >
         + Add Event
       </button>
@@ -21,8 +21,8 @@
     </div>
 
     <!-- Event Modal -->
-    <div v-if="showEventModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div class="bg-white dark:bg-gray-800 rounded-lg max-w-md w-full p-6 max-h-[90vh] overflow-y-auto">
+    <div v-if="showEventModal" class="mobile-modal">
+      <div class="mobile-modal-content">
         <h2 class="text-2xl font-bold mb-4">{{ editingEvent ? 'Edit Event' : 'New Event' }}</h2>
         <form @submit.prevent="saveEvent" class="space-y-4">
           <div>

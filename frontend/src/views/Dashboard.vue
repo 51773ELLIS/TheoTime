@@ -1,14 +1,14 @@
 <template>
-  <div class="space-y-6">
+  <div class="space-y-4 sm:space-y-6">
     <div>
-      <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Dashboard</h1>
+      <h1 class="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">Dashboard</h1>
       <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
         Welcome back, {{ authStore.user?.full_name || authStore.user?.username }}!
       </p>
     </div>
 
     <!-- Stats Grid -->
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6">
       <div class="card">
         <h3 class="text-lg font-semibold text-gray-700 dark:text-gray-300 mb-2">Upcoming Events</h3>
         <p class="text-3xl font-bold text-primary-600 dark:text-primary-400">{{ upcomingEventsCount }}</p>
@@ -94,8 +94,8 @@
 
     <!-- Quick Actions -->
     <div class="card">
-      <h2 class="text-xl font-bold text-gray-900 dark:text-white mb-4">Quick Actions</h2>
-      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <h2 class="text-lg sm:text-xl font-bold text-gray-900 dark:text-white mb-4">Quick Actions</h2>
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <router-link
           to="/worship"
           class="p-4 bg-primary-50 dark:bg-primary-900 rounded-lg hover:bg-primary-100 dark:hover:bg-primary-800 transition-colors"

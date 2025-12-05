@@ -18,7 +18,7 @@
     </div>
 
     <!-- Worship Plans -->
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
       <div
         v-for="plan in plans"
         :key="plan.id"
@@ -53,8 +53,8 @@
     </div>
 
     <!-- Plan Modal -->
-    <div v-if="showPlanModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div class="bg-white dark:bg-gray-800 rounded-lg max-w-2xl w-full p-6 max-h-[90vh] overflow-y-auto">
+    <div v-if="showPlanModal" class="mobile-modal">
+      <div class="mobile-modal-content max-w-2xl">
         <h2 class="text-2xl font-bold mb-4">{{ editingPlan ? 'Edit Plan' : 'New Worship Plan' }}</h2>
         <form @submit.prevent="savePlan" class="space-y-4">
           <div>
@@ -105,8 +105,8 @@
     </div>
 
     <!-- Log Modal -->
-    <div v-if="showLogModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div class="bg-white dark:bg-gray-800 rounded-lg max-w-2xl w-full p-6">
+    <div v-if="showLogModal" class="mobile-modal">
+      <div class="mobile-modal-content max-w-2xl">
         <h2 class="text-2xl font-bold mb-4">Log Worship Session</h2>
         <form @submit.prevent="saveLog" class="space-y-4">
           <div>

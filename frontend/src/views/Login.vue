@@ -1,14 +1,14 @@
 <template>
-  <div class="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 py-12 px-4 sm:px-6 lg:px-8">
-    <div class="max-w-md w-full space-y-8">
+  <div class="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 py-6 sm:py-12 px-4 sm:px-6 lg:px-8">
+    <div class="max-w-md w-full space-y-6 sm:space-y-8">
       <div>
-        <h1 class="text-center text-4xl font-bold text-primary-600 dark:text-primary-400">TheoTime</h1>
+        <h1 class="text-center text-3xl sm:text-4xl font-bold text-primary-600 dark:text-primary-400">TheoTime</h1>
         <p class="mt-2 text-center text-sm text-gray-600 dark:text-gray-400">
           Family Worship Planner
         </p>
       </div>
       <div class="card">
-        <h2 class="text-2xl font-bold text-center mb-6">Sign in to your account</h2>
+        <h2 class="text-xl sm:text-2xl font-bold text-center mb-4 sm:mb-6">Sign in to your account</h2>
         
         <form @submit.prevent="handleLogin" class="space-y-4">
           <div v-if="error" class="bg-red-50 dark:bg-red-900 border border-red-200 dark:border-red-700 text-red-700 dark:text-red-300 px-4 py-3 rounded">

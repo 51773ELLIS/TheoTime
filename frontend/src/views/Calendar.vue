@@ -34,13 +34,29 @@
           <p class="text-blue-800 dark:text-blue-200 font-medium">{{ selectedEvent.worship_plan_title }}</p>
         </div>
 
-        <!-- Action Buttons for Parents -->
-        <div v-if="authStore.isParent" class="mb-4 flex flex-wrap gap-2">
-          <button @click="editEventFromDetails" class="btn btn-primary">Edit Event</button>
-          <button @click="deleteEventFromDetails" class="btn btn-danger">Delete Event</button>
+        <!-- Event Info -->
+        <div class="mb-4 space-y-2">
+          <div v-if="selectedEvent?.start_date">
+            <p class="text-sm text-gray-600 dark:text-gray-400">Start:</p>
+            <p class="text-gray-900 dark:text-white">{{ formatEventDate(selectedEvent.start_date) }}</p>
+          </div>
+          <div v-if="selectedEvent?.end_date">
+            <p class="text-sm text-gray-600 dark:text-gray-400">End:</p>
+            <p class="text-gray-900 dark:text-white">{{ formatEventDate(selectedEvent.end_date) }}</p>
+          </div>
+          <div v-if="selectedEvent?.description">
+            <p class="text-sm text-gray-600 dark:text-gray-400">Description:</p>
+            <p class="text-gray-900 dark:text-white">{{ selectedEvent.description }}</p>
+          </div>
         </div>
 
-        <div v-if="selectedEvent?.event_type === 'worship' && authStore.isParent && !selectedEvent?.is_completed && !selectedEvent?.has_completed_log" class="space-y-4">
+        <!-- Action Buttons for Parents -->
+        <div v-if="authStore.isParent" class="mb-4 flex flex-wrap gap-2 border-t pt-4">
+          <button @click="editEventFromDetails" class="btn btn-primary flex-1">Edit Event</button>
+          <button @click="deleteEventFromDetails" class="btn btn-danger flex-1">Delete Event</button>
+        </div>
+
+        <div v-if="selectedEvent?.event_type === 'worship' && authStore.isParent && !selectedEvent?.is_completed && !selectedEvent?.has_completed_log" class="space-y-4 mt-4 border-t pt-4">
           <!-- Assign Plan Section -->
           <div>
             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Assign Worship Plan</label>
@@ -273,8 +289,10 @@ function handleDateSelect(selectInfo) {
 async function handleEventClick(clickInfo) {
   const event = events.value.find(e => e.id === clickInfo.event.id);
   
+  if (!event) return;
+  
   // If it's a worship event, show the details modal for plan assignment/completion
-  if (event && event.event_type === 'worship') {
+  if (event.event_type === 'worship') {
     selectedEvent.value = event;
     selectedPlanId.value = event.worship_plan_id || null;
     
@@ -288,18 +306,9 @@ async function handleEventClick(clickInfo) {
     
     showEventDetailsModal.value = true;
   } else {
-    // For other event types, show edit modal
-    editingEvent.value = event;
-    eventForm.value = {
-      title: event.title,
-      event_type: event.event_type,
-      start_date: event.start_date.replace('T', ' ').substring(0, 16),
-      end_date: event.end_date ? event.end_date.replace('T', ' ').substring(0, 16) : '',
-      description: event.description || '',
-      is_recurring: event.is_recurring === 1,
-      recurrence_pattern: event.recurrence_pattern || 'weekly'
-    };
-    showEventModal.value = true;
+    // For other event types, show details modal with edit/delete options
+    selectedEvent.value = event;
+    showEventDetailsModal.value = true;
   }
 }
 
@@ -452,6 +461,12 @@ const deleteEvent = async () => {
     console.error('Failed to delete event:', error);
     alert('Failed to delete event');
   }
+};
+
+const formatEventDate = (dateString) => {
+  if (!dateString) return '';
+  const date = new Date(dateString);
+  return date.toLocaleString();
 };
 
 const closeModal = () => {

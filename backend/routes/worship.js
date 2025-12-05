@@ -9,7 +9,14 @@ const router = express.Router();
 router.get('/plans', authenticateToken, async (req, res) => {
   try {
     const { event_id } = req.query;
-    let query = 'SELECT wp.*, e.title as event_title, e.start_date FROM worship_plans wp LEFT JOIN events e ON wp.event_id = e.id WHERE 1=1';
+    let query = `SELECT wp.*, 
+      e.title as event_title, 
+      e.start_date,
+      e.is_completed as event_completed,
+      (SELECT COUNT(*) FROM worship_logs wl WHERE wl.worship_plan_id = wp.id AND wl.is_completed = 1) as is_completed
+      FROM worship_plans wp 
+      LEFT JOIN events e ON wp.event_id = e.id 
+      WHERE 1=1`;
     const params = [];
 
     if (event_id) {
@@ -183,18 +190,20 @@ router.post('/logs', authenticateToken, [
       return res.status(400).json({ errors: errors.array() });
     }
 
-    const { worship_plan_id, event_id, participants, what_was_covered, reflections, notes } = req.body;
+    const { worship_plan_id, event_id, participants, what_was_covered, reflections, notes, future_thoughts, is_completed } = req.body;
 
     const result = await dbRun(
-      `INSERT INTO worship_logs (worship_plan_id, event_id, participants, what_was_covered, reflections, notes)
-       VALUES (?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO worship_logs (worship_plan_id, event_id, participants, what_was_covered, reflections, notes, future_thoughts, is_completed)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         worship_plan_id || null,
         event_id || null,
         participants ? JSON.stringify(participants) : null,
         what_was_covered,
         reflections || null,
-        notes || null
+        notes || null,
+        future_thoughts || null,
+        is_completed ? 1 : 0
       ]
     );
 

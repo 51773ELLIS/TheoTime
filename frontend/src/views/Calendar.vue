@@ -20,6 +20,76 @@
       <FullCalendar :options="calendarOptions" />
     </div>
 
+    <!-- Event Details Modal (for worship events) -->
+    <div v-if="showEventDetailsModal" class="mobile-modal">
+      <div class="mobile-modal-content max-w-2xl">
+        <h2 class="text-2xl font-bold mb-4">{{ selectedEvent?.title || 'Event Details' }}</h2>
+        
+        <div v-if="selectedEvent?.is_completed === 1 || selectedEvent?.has_completed_log" class="mb-4 p-3 bg-green-50 dark:bg-green-900 rounded-lg">
+          <p class="text-green-800 dark:text-green-200 font-medium">✓ This worship night has been completed</p>
+        </div>
+
+        <div v-if="selectedEvent?.worship_plan_title" class="mb-4 p-3 bg-blue-50 dark:bg-blue-900 rounded-lg">
+          <p class="text-sm text-gray-600 dark:text-gray-400 mb-1">Assigned Plan:</p>
+          <p class="text-blue-800 dark:text-blue-200 font-medium">{{ selectedEvent.worship_plan_title }}</p>
+        </div>
+
+        <div v-if="selectedEvent?.event_type === 'worship' && authStore.isParent && !selectedEvent?.is_completed && !selectedEvent?.has_completed_log" class="space-y-4">
+          <!-- Assign Plan Section -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Assign Worship Plan</label>
+            <select v-model="selectedPlanId" class="input">
+              <option value="">-- Select a plan --</option>
+              <option v-for="plan in availablePlans" :key="plan.id" :value="plan.id">
+                {{ plan.title }}
+              </option>
+            </select>
+            <button 
+              @click="assignPlan" 
+              :disabled="!selectedPlanId"
+              class="btn btn-primary mt-2 w-full sm:w-auto"
+            >
+              Assign Plan
+            </button>
+          </div>
+
+          <div class="border-t pt-4">
+            <h3 class="text-lg font-semibold mb-3">Complete Worship Night</h3>
+            <form @submit.prevent="completeEvent" class="space-y-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">What was covered *</label>
+                <textarea v-model="reviewForm.what_was_covered" rows="4" required class="input" placeholder="Describe what was discussed during the worship session"></textarea>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Participants</label>
+                <input v-model="reviewForm.participants" type="text" class="input" placeholder="Comma-separated names" />
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">How it went</label>
+                <textarea v-model="reviewForm.reflections" rows="3" class="input" placeholder="Share your thoughts on how the session went"></textarea>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Thoughts for future worship nights</label>
+                <textarea v-model="reviewForm.future_thoughts" rows="3" class="input" placeholder="Ideas or topics for upcoming sessions"></textarea>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Additional Notes</label>
+                <textarea v-model="reviewForm.notes" rows="2" class="input"></textarea>
+              </div>
+              <div class="flex space-x-3">
+                <button type="submit" class="flex-1 btn btn-primary">Mark as Completed</button>
+                <button type="button" @click="closeEventDetailsModal" class="flex-1 btn btn-secondary">Close</button>
+              </div>
+            </form>
+          </div>
+        </div>
+
+        <div v-else class="flex justify-end">
+          <button @click="closeEventDetailsModal" class="btn btn-secondary">Close</button>
+        </div>
+      </div>
+    </div>
+
     <!-- Event Modal -->
     <div v-if="showEventModal" class="mobile-modal">
       <div class="mobile-modal-content">
@@ -85,10 +155,24 @@ import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
 import interactionPlugin from '@fullcalendar/interaction';
 import api from '@/utils/api';
+import { useAuthStore } from '@/store/auth';
+
+const authStore = useAuthStore();
 
 const showEventModal = ref(false);
+const showEventDetailsModal = ref(false);
 const editingEvent = ref(null);
+const selectedEvent = ref(null);
 const events = ref([]);
+const availablePlans = ref([]);
+const selectedPlanId = ref(null);
+const reviewForm = ref({
+  what_was_covered: '',
+  participants: '',
+  reflections: '',
+  future_thoughts: '',
+  notes: ''
+});
 const eventForm = ref({
   title: '',
   event_type: 'worship',
@@ -129,20 +213,29 @@ const loadEvents = async () => {
     
     // Map events for FullCalendar
     // Since we generate recurring instances on the backend, we just display all events
-    calendarOptions.value.events = events.value.map(event => ({
-      id: event.id,
-      title: event.title,
-      start: event.start_date,
-      end: event.end_date || null,
-      backgroundColor: getEventColor(event.event_type),
-      borderColor: getEventColor(event.event_type),
-      extendedProps: {
-        event_type: event.event_type,
-        description: event.description,
-        is_recurring: event.is_recurring === 1,
-        recurrence_pattern: event.recurrence_pattern
-      }
-    }));
+    calendarOptions.value.events = events.value.map(event => {
+      const isCompleted = event.is_completed === 1 || event.has_completed_log;
+      const hasPlan = event.worship_plan_id;
+      
+      return {
+        id: event.id,
+        title: event.title + (hasPlan ? ' 📋' : '') + (isCompleted ? ' ✓' : ''),
+        start: event.start_date,
+        end: event.end_date || null,
+        backgroundColor: isCompleted ? '#10b981' : getEventColor(event.event_type),
+        borderColor: isCompleted ? '#10b981' : getEventColor(event.event_type),
+        extendedProps: {
+          event_type: event.event_type,
+          description: event.description,
+          is_recurring: event.is_recurring === 1,
+          recurrence_pattern: event.recurrence_pattern,
+          worship_plan_id: event.worship_plan_id,
+          worship_plan_title: event.worship_plan_title,
+          is_completed: isCompleted,
+          has_completed_log: event.has_completed_log
+        }
+      };
+    });
   } catch (error) {
     console.error('Failed to load events:', error);
   }
@@ -168,18 +261,37 @@ function handleDateSelect(selectInfo) {
   showEventModal.value = true;
 }
 
-function handleEventClick(clickInfo) {
-  editingEvent.value = events.value.find(e => e.id === clickInfo.event.id);
-  eventForm.value = {
-    title: editingEvent.value.title,
-    event_type: editingEvent.value.event_type,
-    start_date: editingEvent.value.start_date.replace('T', ' ').substring(0, 16),
-    end_date: editingEvent.value.end_date ? editingEvent.value.end_date.replace('T', ' ').substring(0, 16) : '',
-    description: editingEvent.value.description || '',
-    is_recurring: editingEvent.value.is_recurring === 1,
-    recurrence_pattern: editingEvent.value.recurrence_pattern || 'weekly'
-  };
-  showEventModal.value = true;
+async function handleEventClick(clickInfo) {
+  const event = events.value.find(e => e.id === clickInfo.event.id);
+  
+  // If it's a worship event, show the details modal for plan assignment/completion
+  if (event && event.event_type === 'worship') {
+    selectedEvent.value = event;
+    selectedPlanId.value = event.worship_plan_id || null;
+    
+    // Load available plans
+    try {
+      const plansResponse = await api.get('/worship/plans');
+      availablePlans.value = plansResponse.data.filter(plan => !plan.is_completed && !plan.event_completed);
+    } catch (error) {
+      console.error('Failed to load plans:', error);
+    }
+    
+    showEventDetailsModal.value = true;
+  } else {
+    // For other event types, show edit modal
+    editingEvent.value = event;
+    eventForm.value = {
+      title: event.title,
+      event_type: event.event_type,
+      start_date: event.start_date.replace('T', ' ').substring(0, 16),
+      end_date: event.end_date ? event.end_date.replace('T', ' ').substring(0, 16) : '',
+      description: event.description || '',
+      is_recurring: event.is_recurring === 1,
+      recurrence_pattern: event.recurrence_pattern || 'weekly'
+    };
+    showEventModal.value = true;
+  }
 }
 
 function handleEventChange(changeInfo) {
@@ -222,6 +334,56 @@ const updateEvent = async (id, data) => {
   } catch (error) {
     console.error('Failed to update event:', error);
   }
+};
+
+const assignPlan = async () => {
+  if (!selectedPlanId.value || !selectedEvent.value) return;
+  
+  try {
+    await api.put(`/events/${selectedEvent.value.id}/assign-plan`, {
+      worship_plan_id: selectedPlanId.value
+    });
+    await loadEvents();
+    alert('Worship plan assigned successfully!');
+    // Refresh selected event
+    const updatedEvent = events.value.find(e => e.id === selectedEvent.value.id);
+    if (updatedEvent) {
+      selectedEvent.value = updatedEvent;
+    }
+  } catch (error) {
+    console.error('Failed to assign plan:', error);
+    alert('Failed to assign worship plan');
+  }
+};
+
+const completeEvent = async () => {
+  if (!selectedEvent.value) return;
+  
+  try {
+    await api.put(`/events/${selectedEvent.value.id}/complete`, {
+      worship_plan_id: selectedEvent.value.worship_plan_id,
+      ...reviewForm.value
+    });
+    await loadEvents();
+    alert('Worship night marked as completed!');
+    closeEventDetailsModal();
+  } catch (error) {
+    console.error('Failed to complete event:', error);
+    alert(error.response?.data?.error || 'Failed to complete event');
+  }
+};
+
+const closeEventDetailsModal = () => {
+  showEventDetailsModal.value = false;
+  selectedEvent.value = null;
+  selectedPlanId.value = null;
+  reviewForm.value = {
+    what_was_covered: '',
+    participants: '',
+    reflections: '',
+    future_thoughts: '',
+    notes: ''
+  };
 };
 
 const closeModal = () => {

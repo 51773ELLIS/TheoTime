@@ -167,11 +167,20 @@ export const initializeDatabase = async () => {
       what_was_covered TEXT,
       reflections TEXT,
       notes TEXT,
+      future_thoughts TEXT,
+      is_completed BOOLEAN DEFAULT 0,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (worship_plan_id) REFERENCES worship_plans(id) ON DELETE CASCADE,
       FOREIGN KEY (event_id) REFERENCES events(id) ON DELETE CASCADE
     )
   `);
+  
+  // Add is_completed column to events if it doesn't exist (for migration)
+  try {
+    await dbRun(`ALTER TABLE events ADD COLUMN is_completed BOOLEAN DEFAULT 0`);
+  } catch (e) {
+    // Column already exists, ignore
+  }
 
   // Homework/Assignments table
   await dbRun(`

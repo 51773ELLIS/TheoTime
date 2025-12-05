@@ -17,18 +17,21 @@
       </div>
     </div>
 
-    <!-- Worship Plans -->
-    <div v-if="plans.length === 0" class="card text-center py-8 text-gray-500 dark:text-gray-400">
+    <!-- Active Worship Plans -->
+    <div v-if="activePlans.length === 0 && completedPlans.length === 0" class="card text-center py-8 text-gray-500 dark:text-gray-400">
       <p>No worship plans yet.</p>
       <p class="mt-2">Click "+ New Plan" to create your first worship plan.</p>
     </div>
-    <div v-else class="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-      <div
-        v-for="plan in plans"
-        :key="plan.id"
-        class="card cursor-pointer hover:shadow-lg transition-shadow"
-        @click="viewPlan(plan)"
-      >
+    
+    <div v-if="activePlans.length > 0">
+      <h2 class="text-xl font-bold text-gray-900 dark:text-white mb-4">Active Plans</h2>
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+        <div
+          v-for="plan in activePlans"
+          :key="plan.id"
+          class="card cursor-pointer hover:shadow-lg transition-shadow"
+          @click="viewPlan(plan)"
+        >
         <div class="flex justify-between items-start mb-3">
           <h3 class="text-xl font-semibold text-gray-900 dark:text-white">{{ plan.title }}</h3>
           <span v-if="plan.event_title" class="text-xs text-gray-500 dark:text-gray-400">
@@ -58,6 +61,39 @@
           >
             Delete
           </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Completed Worship Plans -->
+    <div v-if="completedPlans.length > 0" class="mt-8">
+      <h2 class="text-xl font-bold text-gray-900 dark:text-white mb-4">Completed Plans</h2>
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+        <div
+          v-for="plan in completedPlans"
+          :key="plan.id"
+          class="card cursor-pointer opacity-60 hover:opacity-80 transition-opacity"
+          @click="viewPlan(plan)"
+        >
+          <div class="flex justify-between items-start mb-3">
+            <h3 class="text-xl font-semibold text-gray-900 dark:text-white">{{ plan.title }}</h3>
+            <span class="text-xs text-green-600 dark:text-green-400 font-medium">✓ Completed</span>
+          </div>
+          <div v-if="plan.bible_reading" class="mb-2">
+            <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Bible Reading:</span>
+            <span class="text-sm text-gray-600 dark:text-gray-400 ml-2">{{ plan.bible_reading }}</span>
+          </div>
+          <div v-if="plan.event_title" class="mb-2">
+            <span class="text-xs text-gray-500 dark:text-gray-400">Completed: {{ formatDate(plan.event_title) }}</span>
+          </div>
+          <div class="flex space-x-2 mt-4">
+            <button
+              @click.stop="viewPlan(plan)"
+              class="text-sm text-primary-600 dark:text-primary-400 hover:underline"
+            >
+              View Details
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -155,6 +191,14 @@ const showLogModal = ref(false);
 const showTemplateModal = ref(false);
 const editingPlan = ref(null);
 const selectedPlanForLog = ref(null);
+
+const activePlans = computed(() => {
+  return plans.value.filter(plan => !plan.is_completed && !plan.event_completed);
+});
+
+const completedPlans = computed(() => {
+  return plans.value.filter(plan => plan.is_completed || plan.event_completed);
+});
 
 const planForm = ref({
   title: '',

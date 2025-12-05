@@ -51,9 +51,14 @@
         </div>
 
         <!-- Action Buttons for Parents -->
-        <div v-if="authStore.isParent" class="mb-4 flex flex-wrap gap-2 border-t pt-4">
-          <button @click="editEventFromDetails" class="btn btn-primary flex-1">Edit Event</button>
-          <button @click="deleteEventFromDetails" class="btn btn-danger flex-1">Delete Event</button>
+        <div v-if="authStore.isParent" class="mb-4 flex flex-col sm:flex-row gap-2 border-t pt-4">
+          <button @click="editEventFromDetails" class="btn btn-primary flex-1">✏️ Edit Event</button>
+          <button @click="deleteEventFromDetails" class="btn btn-danger flex-1">🗑️ Delete Event</button>
+        </div>
+        
+        <!-- Show message for non-parent users -->
+        <div v-else class="mb-4 border-t pt-4">
+          <p class="text-sm text-gray-500 dark:text-gray-400">Only parents can edit or delete events.</p>
         </div>
 
         <div v-if="selectedEvent?.event_type === 'worship' && authStore.isParent && !selectedEvent?.is_completed && !selectedEvent?.has_completed_log" class="space-y-4 mt-4 border-t pt-4">
@@ -340,23 +345,36 @@ function handleEventChange(changeInfo) {
 
 const saveEvent = async () => {
   try {
+    // Format datetime-local input to ISO string
+    const formatDateTime = (dateTimeString) => {
+      if (!dateTimeString) return null;
+      // If already in correct format (YYYY-MM-DDTHH:mm), add seconds
+      if (dateTimeString.includes('T')) {
+        return dateTimeString + ':00';
+      }
+      // If in old format (YYYY-MM-DD HH:mm), convert to ISO
+      return dateTimeString.replace(' ', 'T') + ':00';
+    };
+    
     const data = {
       ...eventForm.value,
-      start_date: eventForm.value.start_date.replace(' ', 'T') + ':00',
-      end_date: eventForm.value.end_date ? eventForm.value.end_date.replace(' ', 'T') + ':00' : null
+      start_date: formatDateTime(eventForm.value.start_date),
+      end_date: formatDateTime(eventForm.value.end_date)
     };
 
     if (editingEvent.value) {
       await api.put(`/events/${editingEvent.value.id}`, data);
+      alert('Event updated successfully');
     } else {
       await api.post('/events', data);
+      alert('Event created successfully');
     }
 
     closeModal();
     await loadEvents();
   } catch (error) {
     console.error('Failed to save event:', error);
-    alert('Failed to save event');
+    alert(error.response?.data?.error || 'Failed to save event');
   }
 };
 
@@ -420,32 +438,57 @@ const closeEventDetailsModal = () => {
 };
 
 const editEventFromDetails = () => {
-  if (!selectedEvent.value) return;
+  if (!selectedEvent.value) {
+    console.error('No event selected');
+    return;
+  }
   
   // Close details modal and open edit modal
   closeEventDetailsModal();
   
   // Find the event in the events array
   const event = events.value.find(e => e.id === selectedEvent.value.id);
-  if (event) {
-    editingEvent.value = event;
-    eventForm.value = {
-      title: event.title,
-      event_type: event.event_type,
-      start_date: event.start_date.replace('T', ' ').substring(0, 16),
-      end_date: event.end_date ? event.end_date.replace('T', ' ').substring(0, 16) : '',
-      description: event.description || '',
-      is_recurring: event.is_recurring === 1,
-      recurrence_pattern: event.recurrence_pattern || 'weekly'
-    };
-    showEventModal.value = true;
+  if (!event) {
+    console.error('Event not found in events array:', selectedEvent.value.id);
+    alert('Event not found. Please refresh the page.');
+    return;
   }
+  
+  editingEvent.value = event;
+  
+  // Format dates for datetime-local input (YYYY-MM-DDTHH:mm)
+  const formatForInput = (dateString) => {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    return `${year}-${month}-${day}T${hours}:${minutes}`;
+  };
+  
+  eventForm.value = {
+    title: event.title,
+    event_type: event.event_type,
+    start_date: formatForInput(event.start_date),
+    end_date: event.end_date ? formatForInput(event.end_date) : '',
+    description: event.description || '',
+    is_recurring: event.is_recurring === 1,
+    recurrence_pattern: event.recurrence_pattern || 'weekly'
+  };
+  
+  showEventModal.value = true;
 };
 
 const deleteEventFromDetails = async () => {
-  if (!selectedEvent.value) return;
+  if (!selectedEvent.value) {
+    console.error('No event selected for deletion');
+    return;
+  }
   
-  if (!confirm(`Are you sure you want to delete "${selectedEvent.value.title}"? This action cannot be undone.`)) {
+  const eventTitle = selectedEvent.value.title || 'this event';
+  if (!confirm(`Are you sure you want to delete "${eventTitle}"?\n\nThis action cannot be undone.`)) {
     return;
   }
 
@@ -456,7 +499,7 @@ const deleteEventFromDetails = async () => {
     closeEventDetailsModal();
   } catch (error) {
     console.error('Failed to delete event:', error);
-    alert('Failed to delete event');
+    alert(error.response?.data?.error || 'Failed to delete event. Please try again.');
   }
 };
 

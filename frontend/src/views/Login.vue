@@ -52,7 +52,7 @@
           </button>
         </form>
 
-        <div v-if="authStore.isParent === null" class="mt-4 text-center">
+        <div v-if="!authStore.isAuthenticated" class="mt-4 text-center">
           <p class="text-sm text-gray-600 dark:text-gray-400">
             Don't have an account?
           </p>

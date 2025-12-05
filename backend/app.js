@@ -3,6 +3,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
+import { existsSync } from 'fs';
 import { initializeDatabase } from './utils/database.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -27,8 +28,14 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Serve static files from frontend build in production
+// In Docker: /app/public, in local: ../public or ./public
 if (process.env.NODE_ENV === 'production') {
-  app.use(express.static(join(__dirname, '../public')));
+  const publicPath = join(__dirname, 'public');
+  const altPublicPath = join(__dirname, '../public');
+  
+  // Try current directory first (Docker), then parent directory (local)
+  const staticPath = existsSync(publicPath) ? publicPath : altPublicPath;
+  app.use(express.static(staticPath));
 }
 
 // Initialize database
@@ -65,8 +72,14 @@ app.use((err, req, res, next) => {
 
 // Serve frontend in production (SPA fallback)
 if (process.env.NODE_ENV === 'production') {
+  const publicPath = join(__dirname, 'public');
+  const altPublicPath = join(__dirname, '../public');
+  const indexPath = existsSync(publicPath) 
+    ? join(publicPath, 'index.html')
+    : join(altPublicPath, 'index.html');
+  
   app.get('*', (req, res) => {
-    res.sendFile(join(__dirname, '../public/index.html'));
+    res.sendFile(indexPath);
   });
 } else {
   // 404 handler for API routes in development

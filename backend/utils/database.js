@@ -2,6 +2,8 @@ import sqlite3 from 'sqlite3';
 import { promisify } from 'util';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
+import { mkdir } from 'fs/promises';
+import { existsSync } from 'fs';
 import dotenv from 'dotenv';
 
 dotenv.config();
@@ -10,6 +12,20 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 const DB_PATH = process.env.DB_PATH || join(__dirname, '../../database/theotime.sqlite');
+
+// Ensure database directory exists
+const ensureDatabaseDirectory = async () => {
+  const dbDir = dirname(DB_PATH);
+  if (!existsSync(dbDir)) {
+    try {
+      await mkdir(dbDir, { recursive: true });
+      console.log(`Created database directory: ${dbDir}`);
+    } catch (err) {
+      console.error(`Failed to create database directory: ${dbDir}`, err);
+      throw err;
+    }
+  }
+};
 
 let db = null;
 
@@ -55,6 +71,8 @@ export const dbAll = (query, params = []) => {
 };
 
 export const initializeDatabase = async () => {
+  // Ensure database directory exists before creating database
+  await ensureDatabaseDirectory();
   const db = getDatabase();
 
   // Users table

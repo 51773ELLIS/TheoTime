@@ -35,7 +35,12 @@ if (process.env.NODE_ENV === 'production') {
   
   // Try current directory first (Docker), then parent directory (local)
   const staticPath = existsSync(publicPath) ? publicPath : altPublicPath;
-  app.use(express.static(staticPath));
+  
+  if (existsSync(staticPath)) {
+    app.use(express.static(staticPath));
+  } else {
+    console.warn(`Warning: Static file directory not found at ${publicPath} or ${altPublicPath}`);
+  }
 }
 
 // Initialize database
@@ -61,6 +66,14 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', message: 'TheoTime API is running' });
 });
 
+// 404 handler for API routes (before SPA fallback)
+app.use((req, res, next) => {
+  if (req.path.startsWith('/api') && !res.headersSent) {
+    return res.status(404).json({ error: 'API route not found' });
+  }
+  next();
+});
+
 // Error handling middleware
 app.use((err, req, res, next) => {
   console.error(err.stack);
@@ -79,10 +92,15 @@ if (process.env.NODE_ENV === 'production') {
     : join(altPublicPath, 'index.html');
   
   app.get('*', (req, res) => {
-    res.sendFile(indexPath);
+    res.sendFile(indexPath, (err) => {
+      if (err) {
+        console.error('Error sending index.html:', err);
+        res.status(404).json({ error: 'Frontend not found. Please rebuild the frontend.' });
+      }
+    });
   });
 } else {
-  // 404 handler for API routes in development
+  // 404 handler for non-API routes in development
   app.use((req, res) => {
     res.status(404).json({ error: 'Route not found' });
   });

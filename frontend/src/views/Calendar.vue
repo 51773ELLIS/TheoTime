@@ -7,12 +7,48 @@
           Manage your worship nights, study sessions, and events
         </p>
       </div>
-      <button
-        @click="showEventModal = true"
-        class="btn btn-primary w-full sm:w-auto"
-      >
-        + Add Event
-      </button>
+      <div class="flex gap-2 w-full sm:w-auto">
+        <button
+          @click="showFilters = !showFilters"
+          class="btn btn-secondary w-full sm:w-auto"
+        >
+          {{ showFilters ? 'Hide' : 'Show' }} Filters
+        </button>
+        <button
+          @click="showEventModal = true"
+          class="btn btn-primary w-full sm:w-auto"
+        >
+          + Add Event
+        </button>
+      </div>
+    </div>
+
+    <!-- Filters -->
+    <div v-if="showFilters" class="card">
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div>
+          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Event Type</label>
+          <select v-model="eventTypeFilter" @change="applyFilters" class="input">
+            <option value="">All Types</option>
+            <option value="worship">Worship</option>
+            <option value="personal_study">Personal Study</option>
+            <option value="meeting">Meeting</option>
+            <option value="ministry">Ministry</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Status</label>
+          <select v-model="completionFilter" @change="applyFilters" class="input">
+            <option value="all">All</option>
+            <option value="completed">Completed</option>
+            <option value="pending">Pending</option>
+          </select>
+        </div>
+        <div class="flex items-end">
+          <button @click="clearFilters" class="btn btn-secondary w-full">Clear Filters</button>
+        </div>
+      </div>
     </div>
 
     <!-- Calendar -->
@@ -191,9 +227,13 @@ const authStore = useAuthStore();
 
 const showEventModal = ref(false);
 const showEventDetailsModal = ref(false);
+const showFilters = ref(false);
+const eventTypeFilter = ref('');
+const completionFilter = ref('all');
 const editingEvent = ref(null);
 const selectedEvent = ref(null);
 const events = ref([]);
+const allEvents = ref([]);
 const availablePlans = ref([]);
 const selectedPlanId = ref(null);
 const reviewForm = ref({
@@ -243,11 +283,32 @@ onMounted(async () => {
 const loadEvents = async () => {
   try {
     const response = await api.get('/events');
-    events.value = response.data;
-    
-    // Map events for FullCalendar
-    // Since we generate recurring instances on the backend, we just display all events
-    calendarOptions.value.events = events.value.map(event => {
+    allEvents.value = response.data;
+    applyFilters();
+  } catch (error) {
+    console.error('Failed to load events:', error);
+  }
+};
+
+const applyFilters = () => {
+  let filtered = [...allEvents.value];
+  
+  // Filter by event type
+  if (eventTypeFilter.value) {
+    filtered = filtered.filter(e => e.event_type === eventTypeFilter.value);
+  }
+  
+  // Filter by completion status
+  if (completionFilter.value === 'completed') {
+    filtered = filtered.filter(e => e.is_completed === 1 || e.has_completed_log);
+  } else if (completionFilter.value === 'pending') {
+    filtered = filtered.filter(e => e.is_completed !== 1 && !e.has_completed_log);
+  }
+  
+  events.value = filtered;
+  
+  // Map events for FullCalendar
+  calendarOptions.value.events = events.value.map(event => {
       const isCompleted = event.is_completed === 1 || event.has_completed_log;
       const hasPlan = event.worship_plan_id;
       
@@ -271,9 +332,12 @@ const loadEvents = async () => {
         }
       };
     });
-  } catch (error) {
-    console.error('Failed to load events:', error);
-  }
+};
+
+const clearFilters = () => {
+  eventTypeFilter.value = '';
+  completionFilter.value = 'all';
+  applyFilters();
 };
 
 const getEventColor = (type) => {

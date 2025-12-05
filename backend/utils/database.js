@@ -243,6 +243,37 @@ export const initializeDatabase = async () => {
     )
   `);
 
+  // Notifications table
+  await dbRun(`
+    CREATE TABLE IF NOT EXISTS notifications (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      type TEXT NOT NULL,
+      title TEXT NOT NULL,
+      message TEXT,
+      related_id INTEGER,
+      related_type TEXT,
+      read BOOLEAN DEFAULT 0,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    )
+  `);
+
+  // Notification preferences table
+  await dbRun(`
+    CREATE TABLE IF NOT EXISTS notification_preferences (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      notification_type TEXT NOT NULL,
+      enabled BOOLEAN DEFAULT 1,
+      reminder_minutes INTEGER DEFAULT 60,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+      UNIQUE(user_id, notification_type)
+    )
+  `);
+
   // Create indexes for better performance
   await dbRun(`CREATE INDEX IF NOT EXISTS idx_users_username ON users(username)`);
   await dbRun(`CREATE INDEX IF NOT EXISTS idx_events_user_id ON events(user_id)`);
@@ -250,6 +281,23 @@ export const initializeDatabase = async () => {
   await dbRun(`CREATE INDEX IF NOT EXISTS idx_homework_assigned_to ON homework(assigned_to)`);
   await dbRun(`CREATE INDEX IF NOT EXISTS idx_homework_due_date ON homework(due_date)`);
   await dbRun(`CREATE INDEX IF NOT EXISTS idx_spiritual_goals_user_id ON spiritual_goals(user_id)`);
+
+  // Search indexes for full-text search capabilities
+  await dbRun(`CREATE INDEX IF NOT EXISTS idx_events_title ON events(title)`);
+  await dbRun(`CREATE INDEX IF NOT EXISTS idx_events_description ON events(description)`);
+  await dbRun(`CREATE INDEX IF NOT EXISTS idx_homework_title ON homework(title)`);
+  await dbRun(`CREATE INDEX IF NOT EXISTS idx_homework_description ON homework(description)`);
+  await dbRun(`CREATE INDEX IF NOT EXISTS idx_spiritual_goals_title ON spiritual_goals(title)`);
+  await dbRun(`CREATE INDEX IF NOT EXISTS idx_spiritual_goals_description ON spiritual_goals(description)`);
+  await dbRun(`CREATE INDEX IF NOT EXISTS idx_worship_plans_title ON worship_plans(title)`);
+  await dbRun(`CREATE INDEX IF NOT EXISTS idx_events_event_type ON events(event_type)`);
+  await dbRun(`CREATE INDEX IF NOT EXISTS idx_events_is_completed ON events(is_completed)`);
+  await dbRun(`CREATE INDEX IF NOT EXISTS idx_homework_completed ON homework(completed)`);
+  await dbRun(`CREATE INDEX IF NOT EXISTS idx_spiritual_goals_completed ON spiritual_goals(completed)`);
+  await dbRun(`CREATE INDEX IF NOT EXISTS idx_notifications_user_id ON notifications(user_id)`);
+  await dbRun(`CREATE INDEX IF NOT EXISTS idx_notifications_read ON notifications(read)`);
+  await dbRun(`CREATE INDEX IF NOT EXISTS idx_notifications_created_at ON notifications(created_at)`);
+  await dbRun(`CREATE INDEX IF NOT EXISTS idx_notification_preferences_user_id ON notification_preferences(user_id)`);
 
   console.log('Database schema initialized');
 };

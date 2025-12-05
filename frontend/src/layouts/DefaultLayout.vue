@@ -27,6 +27,8 @@
           </div>
           <!-- Desktop user info and logout -->
           <div class="hidden md:flex md:items-center md:space-x-4">
+            <SearchBar />
+            <NotificationBell />
             <span class="text-sm text-gray-700 dark:text-gray-300 truncate max-w-[150px]">
               {{ authStore.user?.full_name || authStore.user?.username }}
             </span>
@@ -58,6 +60,9 @@
       <!-- Mobile menu (collapsible) -->
       <div v-show="mobileMenuOpen" class="md:hidden border-t border-gray-200 dark:border-gray-700">
         <div class="pt-2 pb-3 space-y-1 px-4">
+          <div class="px-3 py-2">
+            <SearchBar />
+          </div>
           <router-link
             v-for="item in navItems"
             :key="item.path"
@@ -95,9 +100,12 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useAuthStore } from '@/store/auth';
+import SearchBar from '@/components/SearchBar.vue';
+import NotificationBell from '@/components/NotificationBell.vue';
+import { requestNotificationPermission, startNotificationPolling } from '@/composables/useNotifications';
 
 const route = useRoute();
 const router = useRouter();
@@ -121,6 +129,7 @@ const navItems = computed(() => {
 
   if (authStore.isParent) {
     items.push({ path: '/ai', name: 'AI Assistant' });
+    items.push({ path: '/analytics', name: 'Analytics' });
   }
 
   items.push({ path: '/settings', name: 'Settings' });
@@ -131,4 +140,17 @@ const navItems = computed(() => {
 const isActive = (path) => {
   return route.path === path || (path !== '/' && route.path.startsWith(path));
 };
+
+// Request notification permission and start polling on mount
+let stopPolling = null;
+onMounted(async () => {
+  await requestNotificationPermission();
+  stopPolling = startNotificationPolling();
+});
+
+onUnmounted(() => {
+  if (stopPolling) {
+    stopPolling();
+  }
+});
 </script>

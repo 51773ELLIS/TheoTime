@@ -48,6 +48,22 @@ const routes = [
         path: 'settings',
         name: 'Settings',
         component: () => import('@/views/Settings.vue')
+      },
+      {
+        path: 'search',
+        name: 'SearchResults',
+        component: () => import('@/views/SearchResults.vue')
+      },
+      {
+        path: 'analytics',
+        name: 'Analytics',
+        component: () => import('@/views/Analytics.vue'),
+        meta: { requiresParent: true }
+      },
+      {
+        path: 'notifications',
+        name: 'Notifications',
+        component: () => import('@/views/Notifications.vue')
       }
     ]
   }

@@ -16,6 +16,10 @@ import homeworkRoutes from './routes/homework.js';
 import childrenRoutes from './routes/children.js';
 import aiRoutes from './routes/ai.js';
 import settingsRoutes from './routes/settings.js';
+import searchRoutes from './routes/search.js';
+import analyticsRoutes from './routes/analytics.js';
+import notificationRoutes from './routes/notifications.js';
+import { runNotificationChecks } from './utils/notificationService.js';
 
 dotenv.config();
 
@@ -46,6 +50,24 @@ if (process.env.NODE_ENV === 'production') {
 // Initialize database
 initializeDatabase().then(() => {
   console.log('Database initialized successfully');
+  
+  // Start notification scheduler (check every 15 minutes)
+  setInterval(async () => {
+    try {
+      await runNotificationChecks();
+    } catch (error) {
+      console.error('Notification check error:', error);
+    }
+  }, 15 * 60 * 1000); // 15 minutes
+  
+  // Run initial check after 1 minute
+  setTimeout(async () => {
+    try {
+      await runNotificationChecks();
+    } catch (error) {
+      console.error('Initial notification check error:', error);
+    }
+  }, 60 * 1000);
 }).catch(err => {
   console.error('Database initialization failed:', err);
   process.exit(1);
@@ -60,6 +82,9 @@ app.use('/api/homework', homeworkRoutes);
 app.use('/api/children', childrenRoutes);
 app.use('/api/ai', aiRoutes);
 app.use('/api/settings', settingsRoutes);
+app.use('/api/search', searchRoutes);
+app.use('/api/analytics', analyticsRoutes);
+app.use('/api/notifications', notificationRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

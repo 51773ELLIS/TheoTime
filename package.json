@@ -1,0 +1,25 @@
+{
+  "name": "theotime",
+  "version": "1.0.0",
+  "description": "TheoTime - A spiritual family-focused web application for Jehovah's Witnesses",
+  "main": "backend/app.js",
+  "scripts": {
+    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "dev:backend": "cd backend && nodemon app.js",
+    "dev:frontend": "cd frontend && npm run dev",
+    "build": "cd frontend && npm run build",
+    "start": "cd backend && node app.js",
+    "install:all": "npm install && cd backend && npm install && cd ../frontend && npm install"
+  },
+  "keywords": [
+    "spiritual",
+    "family",
+    "worship",
+    "jehovah-witnesses"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}

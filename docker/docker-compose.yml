@@ -1,0 +1,27 @@
+version: '3.8'
+
+services:
+  theotime:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: theotime
+    ports:
+      - "3000:3000"
+    volumes:
+      - theotime-data:/app/database
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - JWT_SECRET=${JWT_SECRET:-change-this-secret-key}
+      - JWT_EXPIRES_IN=7d
+      - DB_PATH=/app/database/theotime.sqlite
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  theotime-data:
